@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { SessionSubject } from "./types";
+import type { SessionSubject } from "./types.js";
 
 export const SESSION_COOKIE = "lms_session";
 export const SESSION_TTL_SECONDS = 8 * 60 * 60;

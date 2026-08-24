@@ -1,9 +1,9 @@
 import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import type { Database } from "sql.js";
-import { loadAuthenticatedUser } from "./service";
-import { SESSION_COOKIE, type SessionStore } from "./session-store";
-import type { AuthenticatedUser, Role } from "./types";
+import { loadAuthenticatedUser } from "./service.js";
+import { SESSION_COOKIE, type SessionStore } from "./session-store.js";
+import type { AuthenticatedUser, Role } from "./types.js";
 
 export type AuthEnv = {
   Variables: {

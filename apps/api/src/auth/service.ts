@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import type { Database } from "sql.js";
-import { ROLES, type AuthenticatedUser, type Role } from "./types";
+import { ROLES, type AuthenticatedUser, type Role } from "./types.js";
 
 interface UserRow {
   id: number;

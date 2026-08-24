@@ -5,14 +5,14 @@ import { cors } from "hono/cors";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { logger } from "hono/logger";
 import initSqlJs, { Database } from "sql.js";
-import { requireAuth, requireRole, type AuthEnv } from "./auth/middleware";
-import { authenticateUser } from "./auth/service";
+import { requireAuth, requireRole, type AuthEnv } from "./auth/middleware.js";
+import { authenticateUser } from "./auth/service.js";
 import {
   MemorySessionStore,
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
   type SessionStore,
-} from "./auth/session-store";
+} from "./auth/session-store.js";
 
 const DB_PATH = join(import.meta.dirname, "../../../database/lms.db");
 
