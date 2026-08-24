@@ -57,7 +57,7 @@ The implementation plan will describe the exact file contents, validation checks
 Before changing code, configuration, infrastructure, or deployment settings, an agent must:
 
 1. Read `AGENTS.md`.
-2. Read `docs/VALASUCCI_PROJECT_WORKFLOW.md`.
+2. Read `docs/PROJECT_WORKFLOW.md`.
 3. Inspect the current repository state and stack rather than guessing commands.
 4. Keep frontend and backend responsibilities separated between Vercel and Cloudflare Workers.
 5. Validate local behavior and relevant preview/deployment behavior before claiming completion.
