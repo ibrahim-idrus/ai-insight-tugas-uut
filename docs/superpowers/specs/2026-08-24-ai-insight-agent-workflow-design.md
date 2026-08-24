@@ -40,7 +40,7 @@ The policy explicitly excludes:
 
 The root instruction file is the entry point for AI agents. It requires agents to read and follow the project workflow before making project changes, defines the project boundaries, and states that user instructions and repository policy take precedence over copied source material when they conflict.
 
-### `docs/VALASUCCI_PROJECT_WORKFLOW.md`
+### `docs/PROJECT_WORKFLOW.md`
 
 This is the project-scoped operational workflow. It preserves the useful safety and verification principles from the source runbook, but replaces global values and Oracle-hosting procedures with fixed project targets for local, Vercel, and Cloudflare Workers work.
 
