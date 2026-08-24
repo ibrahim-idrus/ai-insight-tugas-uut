@@ -1,7 +1,7 @@
 # Authentication + Role Access Design
 
 **Date:** 2026-08-24  
-**Status:** Approved for implementation
+**Status:** Awaiting review after identity-model correction
 
 ## Goal
 
@@ -11,11 +11,11 @@ This slice intentionally stops before Classes, Assignments, Materials, Grades, A
 
 ## Existing context
 
-The repository currently contains a Hono API backed by `sql.js` and SQLite, plus a React/Vite frontend. The API loads `database/lms.db` at startup. The database already separates staff accounts in `users` from student accounts in `students`; that separation remains unchanged.
+The repository currently contains a Hono API backed by `sql.js` and SQLite, plus a React/Vite frontend. The API loads `database/lms.db` at startup. The current database schema is a legacy split-account model: staff credentials live in `users`, while student credentials live in `students`. That does not match the intended identity model and will be corrected as part of this slice.
 
-The existing schema has a `username` column, not an `email` column. The login field is labelled “Username or email” for the user-facing contract, but the first implementation resolves accounts through the existing `username` column and does not add or infer an email field.
+The target model has one authentication source: `users`. It will contain `headmaster`, `teacher`, and `student` roles. `students` will remain the student-specific academic/profile table and will have a required one-to-one `user_id` foreign key to `users`. Student credentials will be removed from `students`; the existing `username` column is the first implementation’s login identifier because the schema does not currently have an email column.
 
-The seed comments document bcrypt passwords (`admin123` for staff and `student123` for students), but the checked-in seed hash strings are not valid bcrypt lengths. The implementation will update the SQL seed fixtures to valid bcrypt hashes. It will not store plaintext passwords or alter the account-table model.
+The seed comments document bcrypt passwords (`admin123` for staff and `student123` for students), but the checked-in seed hash strings are not valid bcrypt lengths. The implementation will update the SQL seed fixtures to valid bcrypt hashes and create matching `users` and `students` records for student accounts. It will not store plaintext passwords.
 
 ## Architecture
 
@@ -30,13 +30,18 @@ interface AuthenticatedUser {
   id: number;
   name: string;
   role: Role;
+  student_id?: number;
   class_id?: number;
 }
 ```
 
-The login service checks both account sources for the submitted username. A valid staff row produces `teacher` or `headmaster` from `users.role`. A valid student row produces application role `student` and includes `class_id`. The frontend receives only this normalized identity and never needs to know which table was used.
+The login service checks only `users` for the submitted username and validates the role from `users.role`. A `headmaster` or `teacher` row authenticates directly. A `student` row must also have a matching `students.user_id` profile; that profile supplies `student_id` and `class_id`. The frontend receives only this normalized identity and never needs to understand the synchronization tables.
 
-The session subject stores only the account source and primary key. Every authenticated request resolves that subject against the database again, so the role used for authorization comes from the current server-side account record rather than from a cookie payload, local storage value, request body, or URL parameter.
+The session subject stores only the `users.id`. Every authenticated request resolves that user and, when applicable, the linked student profile against the database again. The role used for authorization therefore comes from the current server-side `users.role`, not from a cookie payload, local storage value, request body, or URL parameter. If a student user loses its linked `students` profile, the session is no longer considered valid.
+
+### Role-specific synchronization
+
+`users` is the canonical identity and authentication record. `students` is a one-to-one role profile, linked by `students.user_id UNIQUE REFERENCES users(id)`. The existing student `name` field may remain as an academic-profile compatibility field, but authentication and normalized identity use `users.name`; seed data must keep the two names aligned. Student `nis` and `class_id` remain in `students`. Teachers remain `users.role = 'teacher'`; subject-teacher and homeroom responsibilities continue to be represented by `subject_teacher_assignments` and `homeroom_assignments`, not by additional authentication roles.
 
 ### Password verification
 
@@ -138,7 +143,8 @@ Each layout includes a sidebar, content area, authenticated user name, and logou
 Backend tests use Node’s built-in test runner against an in-memory `sql.js` database and an isolated session store. They cover:
 
 - Valid teacher, headmaster, and student login.
-- Normalized roles and student `class_id`.
+- Normalized roles, the student `user_id` link, and student `class_id`.
+- Student users without a synchronized `students` profile are rejected.
 - Invalid usernames and passwords returning the same generic error.
 - `/auth/me` restoring the session identity.
 - Teacher, headmaster, and student namespace authorization.
@@ -153,6 +159,7 @@ Frontend tests cover the pure role-to-dashboard and route-guard decisions for un
 2. Passwords are never logged.
 3. Roles are derived from the database-backed session subject.
 4. The client cannot change its role by editing state, storage, cookies, payloads, or URLs.
-5. Students remain in `students`; no `student` value is added to `users.role`.
-6. Every protected backend route applies authentication and role middleware.
-7. Frontend visibility and redirects are convenience controls, not the security boundary.
+5. Every account, including students, authenticates through `users`; `students` contains synchronized academic data linked by `user_id`.
+6. `students` never stores login credentials.
+7. Every protected backend route applies authentication and role middleware.
+8. Frontend visibility and redirects are convenience controls, not the security boundary.
