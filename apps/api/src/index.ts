@@ -1,8 +1,8 @@
-import app, { initDb } from "./app";
+import { createApp, initDb } from "./app";
 
 const port = 3000;
-
-await initDb();
+const database = await initDb();
+const app = createApp(database);
 
 console.log(`LMS API running on http://localhost:${port}`);
 

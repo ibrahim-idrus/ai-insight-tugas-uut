@@ -7,30 +7,30 @@
 PRAGMA foreign_keys = ON;
 
 -- ============================================================
--- 1. users (headmaster and teacher accounts only)
+-- 1. users (all authentication accounts)
 -- ============================================================
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('headmaster', 'teacher')),
+    role TEXT NOT NULL CHECK (role IN ('headmaster', 'teacher', 'student')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- ============================================================
--- 2. students (student data and login accounts)
+-- 2. students (student academic/profile data linked to users)
 -- ============================================================
 CREATE TABLE students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
     nis TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
-    username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
     class_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (class_id) REFERENCES classes(id)
 );
 
@@ -212,6 +212,7 @@ CREATE TABLE attitudes (
 -- ============================================================
 
 -- students
+CREATE INDEX idx_students_user_id ON students(user_id);
 CREATE INDEX idx_students_class_id ON students(class_id);
 
 -- subject_teacher_assignments

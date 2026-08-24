@@ -7,13 +7,44 @@
 PRAGMA foreign_keys = ON;
 
 -- ============================================================
--- 1. users (3 accounts: 1 headmaster + 2 teachers)
--- Password for all: admin123 (bcrypt hash)
+-- 1. users (33 accounts: 1 headmaster + 2 teachers + 30 students)
+-- Staff password: admin123 (bcrypt hash)
+-- Student password: student123 (bcrypt hash)
 -- ============================================================
 INSERT INTO users (name, username, password_hash, role) VALUES
-('Baim Kepala Sekolah', 'adminbaim', '$2b$10$xJwK5q8V3Z9YtR7mN1pD4eA2fG6hJ0kL3mN5oP8qR9sT0uV1wX2yZ3', 'headmaster'),
-('Arsito Guru', 'adminarsito', '$2b$10$xJwK5q8V3Z9YtR7mN1pD4eA2fG6hJ0kL3mN5oP8qR9sT0uV1wX2yZ3', 'teacher'),
-('Alfian Guru', 'adminalfian', '$2b$10$xJwK5q8V3Z9YtR7mN1pD4eA2fG6hJ0kL3mN5oP8qR9sT0uV1wX2yZ3', 'teacher');
+('Baim Kepala Sekolah', 'adminbaim', '$2a$10$dLZfsoCNXL7INlB1e1KbX.66qDwl4U7541qRR5ju3ZpjPyeB3VgoK', 'headmaster'),
+('Arsito Guru', 'adminarsito', '$2a$10$dLZfsoCNXL7INlB1e1KbX.66qDwl4U7541qRR5ju3ZpjPyeB3VgoK', 'teacher'),
+('Alfian Guru', 'adminalfian', '$2a$10$dLZfsoCNXL7INlB1e1KbX.66qDwl4U7541qRR5ju3ZpjPyeB3VgoK', 'teacher'),
+('Ahmad Rizki Pratama', 'ahmad.rizki', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Budi Santoso', 'budi.santoso', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Citra Dewi Lestari', 'citra.dewi', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Diana Putri', 'diana.putri', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Eko Prasetyo', 'eko.prasetyo', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Fajar Nugroho', 'fajar.nugroho', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Gita Sari', 'gita.sari', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Hendra Wijaya', 'hendra.wijaya', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Indah Permata', 'indah.permata', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Joko Susilo', 'joko.susilo', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Kartika Sari', 'kartika.sari', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Lukman Hakim', 'lukman.hakim', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Maya Anggraeni', 'maya.anggraeni', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Nanda Putra', 'nanda.putra', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Olivia Tan', 'olivia.tan', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Putra Wijaya', 'putra.wijaya', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Qori Aulia', 'qori.aulia', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Rizal Firmansyah', 'rizal.firmansyah', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Siti Nurhaliza', 'siti.nurhaliza', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Tono Sugiarto', 'tono.sugiarto', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Umar Bakri', 'umar.bakri', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Vina Panduwinata', 'vina.pandu', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Wahyu Hidayat', 'wahyu.hidayat', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Xena Putri', 'xena.putri', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Yusuf Maulana', 'yusuf.maulana', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Zahra Amelia', 'zahra.amelia', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Aditya Pratama', 'aditya.pratama', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Bella Safitri', 'bella.safitri', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Cahyo Nugroho', 'cahyo.nugroho', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student'),
+('Dewi Lestari', 'dewi.lestari', '$2a$10$Q8UodgDcfqBC7iK3ryUite0jXDYpS9aZ.kSfeSlJsyLoM1XM8m6WS', 'student');
 
 -- ============================================================
 -- 2. classes (6 classes: 2 per grade level)
@@ -47,51 +78,50 @@ INSERT INTO academic_periods (school_year, semester, start_date, end_date) VALUE
 ('2025/2026', 2, '2026-01-05', '2026-06-15');
 
 -- ============================================================
--- 5. students (30 students distributed across classes)
--- Password for all: student123 (bcrypt hash)
+-- 5. students (30 academic profiles linked to users)
 -- ============================================================
-INSERT INTO students (nis, name, username, password_hash, class_id) VALUES
+INSERT INTO students (user_id, nis, name, class_id) VALUES
 -- X-A (class_id = 1)
-('2025001', 'Ahmad Rizki Pratama', 'ahmad.rizki', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 1),
-('2025002', 'Budi Santoso', 'budi.santoso', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 1),
-('2025003', 'Citra Dewi Lestari', 'citra.dewi', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 1),
-('2025004', 'Diana Putri', 'diana.putri', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 1),
-('2025005', 'Eko Prasetyo', 'eko.prasetyo', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 1),
+((SELECT id FROM users WHERE username = 'ahmad.rizki'), '2025001', 'Ahmad Rizki Pratama', 1),
+((SELECT id FROM users WHERE username = 'budi.santoso'), '2025002', 'Budi Santoso', 1),
+((SELECT id FROM users WHERE username = 'citra.dewi'), '2025003', 'Citra Dewi Lestari', 1),
+((SELECT id FROM users WHERE username = 'diana.putri'), '2025004', 'Diana Putri', 1),
+((SELECT id FROM users WHERE username = 'eko.prasetyo'), '2025005', 'Eko Prasetyo', 1),
 
 -- X-B (class_id = 2)
-('2025006', 'Fajar Nugroho', 'fajar.nugroho', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 2),
-('2025007', 'Gita Sari', 'gita.sari', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 2),
-('2025008', 'Hendra Wijaya', 'hendra.wijaya', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 2),
-('2025009', 'Indah Permata', 'indah.permata', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 2),
-('2025010', 'Joko Susilo', 'joko.susilo', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 2),
+((SELECT id FROM users WHERE username = 'fajar.nugroho'), '2025006', 'Fajar Nugroho', 2),
+((SELECT id FROM users WHERE username = 'gita.sari'), '2025007', 'Gita Sari', 2),
+((SELECT id FROM users WHERE username = 'hendra.wijaya'), '2025008', 'Hendra Wijaya', 2),
+((SELECT id FROM users WHERE username = 'indah.permata'), '2025009', 'Indah Permata', 2),
+((SELECT id FROM users WHERE username = 'joko.susilo'), '2025010', 'Joko Susilo', 2),
 
 -- XI-A (class_id = 3)
-('2024001', 'Kartika Sari', 'kartika.sari', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 3),
-('2024002', 'Lukman Hakim', 'lukman.hakim', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 3),
-('2024003', 'Maya Anggraeni', 'maya.anggraeni', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 3),
-('2024004', 'Nanda Putra', 'nanda.putra', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 3),
-('2024005', 'Olivia Tan', 'olivia.tan', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 3),
+((SELECT id FROM users WHERE username = 'kartika.sari'), '2024001', 'Kartika Sari', 3),
+((SELECT id FROM users WHERE username = 'lukman.hakim'), '2024002', 'Lukman Hakim', 3),
+((SELECT id FROM users WHERE username = 'maya.anggraeni'), '2024003', 'Maya Anggraeni', 3),
+((SELECT id FROM users WHERE username = 'nanda.putra'), '2024004', 'Nanda Putra', 3),
+((SELECT id FROM users WHERE username = 'olivia.tan'), '2024005', 'Olivia Tan', 3),
 
 -- XI-B (class_id = 4)
-('2024006', 'Putra Wijaya', 'putra.wijaya', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 4),
-('2024007', 'Qori Aulia', 'qori.aulia', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 4),
-('2024008', 'Rizal Firmansyah', 'rizal.firmansyah', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 4),
-('2024009', 'Siti Nurhaliza', 'siti.nurhaliza', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 4),
-('2024010', 'Tono Sugiarto', 'tono.sugiarto', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 4),
+((SELECT id FROM users WHERE username = 'putra.wijaya'), '2024006', 'Putra Wijaya', 4),
+((SELECT id FROM users WHERE username = 'qori.aulia'), '2024007', 'Qori Aulia', 4),
+((SELECT id FROM users WHERE username = 'rizal.firmansyah'), '2024008', 'Rizal Firmansyah', 4),
+((SELECT id FROM users WHERE username = 'siti.nurhaliza'), '2024009', 'Siti Nurhaliza', 4),
+((SELECT id FROM users WHERE username = 'tono.sugiarto'), '2024010', 'Tono Sugiarto', 4),
 
 -- XII-A (class_id = 5)
-('2023001', 'Umar Bakri', 'umar.bakri', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 5),
-('2023002', 'Vina Panduwinata', 'vina.pandu', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 5),
-('2023003', 'Wahyu Hidayat', 'wahyu.hidayat', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 5),
-('2023004', 'Xena Putri', 'xena.putri', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 5),
-('2023005', 'Yusuf Maulana', 'yusuf.maulana', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 5),
+((SELECT id FROM users WHERE username = 'umar.bakri'), '2023001', 'Umar Bakri', 5),
+((SELECT id FROM users WHERE username = 'vina.pandu'), '2023002', 'Vina Panduwinata', 5),
+((SELECT id FROM users WHERE username = 'wahyu.hidayat'), '2023003', 'Wahyu Hidayat', 5),
+((SELECT id FROM users WHERE username = 'xena.putri'), '2023004', 'Xena Putri', 5),
+((SELECT id FROM users WHERE username = 'yusuf.maulana'), '2023005', 'Yusuf Maulana', 5),
 
 -- XII-B (class_id = 6)
-('2023006', 'Zahra Amelia', 'zahra.amelia', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 6),
-('2023007', 'Aditya Pratama', 'aditya.pratama', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 6),
-('2023008', 'Bella Safitri', 'bella.safitri', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 6),
-('2023009', 'Cahyo Nugroho', 'cahyo.nugroho', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 6),
-('2023010', 'Dewi Lestari', 'dewi.lestari', '$2b$10$yL8kM2nO4pQ6rS8tU0vW1xA3cE5gH7iJ9kL1mN3oP5qR7sT9uV1w', 6);
+((SELECT id FROM users WHERE username = 'zahra.amelia'), '2023006', 'Zahra Amelia', 6),
+((SELECT id FROM users WHERE username = 'aditya.pratama'), '2023007', 'Aditya Pratama', 6),
+((SELECT id FROM users WHERE username = 'bella.safitri'), '2023008', 'Bella Safitri', 6),
+((SELECT id FROM users WHERE username = 'cahyo.nugroho'), '2023009', 'Cahyo Nugroho', 6),
+((SELECT id FROM users WHERE username = 'dewi.lestari'), '2023010', 'Dewi Lestari', 6);
 
 -- ============================================================
 -- 6. subject_teacher_assignments
