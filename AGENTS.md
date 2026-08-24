@@ -2,7 +2,7 @@
 
 This file applies only to this repository: `ai-insight-tugas-uut`.
 
-Before changing code, configuration, infrastructure, or deployment settings:
+Before starting any project task or making any repository change, including documentation-only work:
 
 1. Read `docs/PROJECT_WORKFLOW.md` completely.
 2. Inspect the current repository state and technology stack.

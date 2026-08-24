@@ -36,7 +36,16 @@ git status --short --branch
 git rev-list --left-right --count HEAD...origin/main
 ```
 
-If the remote advances or the branches diverge, stop and reconcile safely before continuing.
+If the current branch has a configured upstream, also check its divergence separately before editing or committing. For example:
+
+```powershell
+$upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>$null
+if ($LASTEXITCODE -eq 0 -and $upstream) {
+  git rev-list --left-right --count HEAD...$upstream
+}
+```
+
+Use the upstream check to understand whether your current branch is ahead, behind, or diverged from its tracked remote branch. Keep the `origin/main` check as a separate freshness check so feature work does not drift from the latest safe base. If the remote advances or the branches diverge, stop and reconcile safely before continuing.
 
 Do not overwrite remote commits or use destructive reset operations to “fix” divergence.
 
@@ -70,7 +79,7 @@ If the repository does not yet define package scripts or helper commands, docume
 
 Use Vercel previews for review.
 
-For meaningful frontend changes, validate in a Vercel preview before claiming the work is ready.
+For meaningful frontend changes, validate in a relevant Vercel preview path when available before claiming the work is ready.
 
 Configure only frontend environment variables in Vercel.
 
