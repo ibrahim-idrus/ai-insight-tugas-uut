@@ -110,6 +110,19 @@ An `AuthProvider` loads `/api/auth/me` once on startup and exposes `user`, `isLo
 
 The login page redirects authenticated users away from `/login` to the dashboard determined by the normalized role. Successful login uses the same role-to-dashboard mapping.
 
+## Reference theme
+
+The supplied Stitch archive is a visual reference only. Its `DESIGN.md` and screenshot do not expand the product scope or override the authentication requirements. The implementation will carry its “Modern Scholastic” visual language into the login and role-layout shells:
+
+- Midnight navy (`#0F172A`) for the primary navigation and high-contrast actions.
+- Indigo (`#6366F1`) for active navigation, focus states, and small accents.
+- Off-white (`#F8FAFC`) page surfaces with white cards and subtle slate borders (`#E2E8F0`).
+- Geist-like geometric headings and Inter-like readable body text, using local/system fallbacks rather than adding an external font dependency.
+- Eight-pixel spacing rhythm, generous layout gutters, rounded cards and controls, and soft ambient shadows.
+- Responsive sidebar/content composition inspired by the reference screenshot, without copying its analytics widgets or adding out-of-scope navigation.
+
+The theme is deliberately applied to the authentication shell and placeholder pages only. The three role layouts keep their required role-specific navigation, so the reference’s `Schedule`, `School Admin`, attendance, analytics, and other extra modules are not added.
+
 ## Role layouts
 
 Each layout shares basic visual primitives but has independent navigation:
@@ -143,4 +156,3 @@ Frontend tests cover the pure role-to-dashboard and route-guard decisions for un
 5. Students remain in `students`; no `student` value is added to `users.role`.
 6. Every protected backend route applies authentication and role middleware.
 7. Frontend visibility and redirects are convenience controls, not the security boundary.
-
