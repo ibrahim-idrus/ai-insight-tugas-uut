@@ -26,6 +26,9 @@ The project policy applies only to the `ai-insight-tugas-uut` repository:
 - Production deployment requires explicit user approval.
 - Secrets must remain outside source control and be configured through local, Vercel, or Cloudflare environment settings as appropriate.
 - Preview-first validation is required for meaningful frontend or backend changes when the relevant preview path exists.
+- Before any edit or commit, agents must fetch the latest `origin` state and check for remote changes, local changes, and branch divergence.
+- New product features must be developed in a dedicated Git worktree created from the latest `main`.
+- A feature worktree may be merged only after explicit user approval; after a verified successful merge, the worktree must be removed and both the worktree and `main` must be clean.
 
 The policy explicitly excludes:
 
@@ -64,6 +67,14 @@ Before changing code, configuration, infrastructure, or deployment settings, an 
 
 An agent must not deploy to Vercel or Cloudflare production, rotate credentials, delete resources, or make irreversible infrastructure changes without explicit user approval.
 
+## Git Synchronization and Feature Worktrees
+
+Before editing or committing, an agent must run `git fetch origin`, inspect `git status`, and compare the current branch with its upstream branch. If the remote has advanced or the branches have diverged, the agent must stop and reconcile the branch safely before continuing; it must not overwrite remote commits or use destructive reset operations.
+
+When the user requests a new product feature, the agent must create a dedicated feature branch and worktree from the latest clean `main`. The agent must keep feature changes isolated there, verify the feature worktree is clean before integration, and request explicit user approval before merging it into `main`.
+
+After approval, the agent must fetch `origin` again, verify that `main` is clean and current, merge the feature branch, run the relevant checks, and verify the merge succeeded. Only after the merged `main` and feature worktree are confirmed clean may the agent remove the worktree and delete its local feature branch. The agent must not force-remove a worktree containing uncommitted changes.
+
 ## Success Criteria
 
 - A new AI agent entering the repository has one obvious instruction entry point.
@@ -71,4 +82,6 @@ An agent must not deploy to Vercel or Cloudflare production, rotate credentials,
 - The workflow contains no active Oracle/Nginx/Discord/server-hosting instructions.
 - The workflow names local hosting, Vercel, and Cloudflare Workers as the only supported execution/deployment paths.
 - The workflow prevents accidental production deployment and secret exposure.
+- The workflow requires remote synchronization checks before edits and commits.
+- The workflow requires isolated worktrees for new product features and clean verified cleanup after merging.
 - Repository checks confirm the required files exist, contain the required boundaries, and do not contain excluded server-specific paths or procedures.
