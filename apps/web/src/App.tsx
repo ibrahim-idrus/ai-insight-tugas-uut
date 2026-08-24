@@ -65,7 +65,7 @@ function LoadingScreen({ message = "Restoring your secure session" }: { message?
   );
 }
 
-function ProtectedRoute({ role }: { role: Role }) {
+export function ProtectedRoute({ role }: { role: Role }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -246,7 +246,7 @@ function LoginPage() {
           </div>
 
           <form className="login-form" onSubmit={(event) => void handleSubmit(event)}>
-            <label htmlFor="username">Username or email</label>
+            <label htmlFor="username">Username</label>
             <input
               autoComplete="username"
               id="username"

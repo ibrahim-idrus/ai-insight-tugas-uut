@@ -39,9 +39,22 @@ export function saveDb() {
 
 export function createApp(database: Database, sessions: SessionStore = new MemorySessionStore()) {
   const app = new Hono<AuthEnv>();
+  const allowedOrigins = new Set(
+    (process.env.CORS_ORIGINS ?? "http://localhost:5173")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  );
+  const sameSite: "Lax" | "None" = process.env.AUTH_COOKIE_SAME_SITE === "None" ? "None" : "Lax";
 
   app.use("*", logger());
-  app.use("*", cors({ credentials: true, origin: "http://localhost:5173" }));
+  app.use(
+    "*",
+    cors({
+      credentials: true,
+      origin: (origin) => (allowedOrigins.has(origin) ? origin : undefined),
+    })
+  );
 
   app.get("/", (context) => {
     return context.json({ message: "LMS API is running" });
@@ -65,7 +78,7 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
   });
 
   app.post("/api/auth/login", async (context) => {
-    let input: { username?: unknown; password?: unknown };
+    let input: { username?: unknown; password?: unknown } | null;
     try {
       input = await context.req.json();
     } catch {
@@ -73,10 +86,11 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
     }
 
     if (
+      !input ||
       typeof input.username !== "string" ||
       typeof input.password !== "string" ||
       !input.username.trim() ||
-      !input.password
+      !input.password.trim()
     ) {
       return context.json({ error: "Username and password are required" }, 400);
     }
@@ -91,8 +105,8 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
       httpOnly: true,
       maxAge: SESSION_TTL_SECONDS,
       path: "/",
-      sameSite: "Lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite,
+      secure: sameSite === "None" || process.env.NODE_ENV === "production",
     });
     return context.json({ user });
   });

@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { apiUrl } from "./api";
 import type { AuthenticatedUser, ErrorResponse, LoginResponse } from "./types";
 
 interface AuthContextValue {
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    void fetch("/api/auth/me", { credentials: "include" })
+    void fetch(apiUrl("/api/auth/me"), { credentials: "include" })
       .then(async (response) => {
         if (!active) return;
         if (!response.ok) {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    const response = await fetch("/api/auth/login", {
+    const response = await fetch(apiUrl("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", {
+      await fetch(apiUrl("/api/auth/logout"), {
         method: "POST",
         credentials: "include",
       });

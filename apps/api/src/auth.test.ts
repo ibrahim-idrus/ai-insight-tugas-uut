@@ -170,6 +170,35 @@ test("returns the same generic error for unknown username and wrong password", a
   assert.deepEqual(await wrongPassword.response.json(), { error: "Invalid username or password" });
 });
 
+test("rejects missing and blank credentials before authentication", async () => {
+  const { app } = await setup();
+  const blankPassword = await app.request("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "adminarsito", password: "   " }),
+  });
+  const nullBody = await app.request("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "null",
+  });
+
+  assert.equal(blankPassword.status, 400);
+  assert.equal(nullBody.status, 400);
+  assert.deepEqual(await blankPassword.json(), { error: "Username and password are required" });
+  assert.deepEqual(await nullBody.json(), { error: "Username and password are required" });
+});
+
+test("allows credentialed requests from the configured local frontend origin", async () => {
+  const { app } = await setup();
+  const response = await app.request("/api/health", {
+    headers: { Origin: "http://localhost:5173" },
+  });
+
+  assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5173");
+  assert.equal(response.headers.get("access-control-allow-credentials"), "true");
+});
+
 test("rejects a student user without a synchronized students profile", async () => {
   const { app } = await setup();
   const { response } = await login(app, "unlinked.student", "student123");

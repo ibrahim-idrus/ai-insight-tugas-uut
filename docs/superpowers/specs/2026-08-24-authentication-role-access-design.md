@@ -1,7 +1,7 @@
 # Authentication + Role Access Design
 
 **Date:** 2026-08-24  
-**Status:** Awaiting review after identity-model correction
+**Status:** Approved implementation specification
 
 ## Goal
 
@@ -52,8 +52,9 @@ Use `bcryptjs` because the database seed contract is bcrypt and the current repo
 Use an opaque server-side session with a cryptographically random token in an `HttpOnly` cookie named `lms_session`.
 
 - Token value: 32 random bytes encoded as URL-safe text.
-- Cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, and an eight-hour `Max-Age`.
-- `Secure` is enabled for production HTTPS and omitted for local HTTP development.
+- Cookie: `HttpOnly`, `Path=/`, and an eight-hour `Max-Age`; `SameSite=Lax` is the local default.
+- For a separately hosted frontend and API, set `AUTH_COOKIE_SAME_SITE=None` so the cookie is `Secure` and cross-site compatible. Set `CORS_ORIGINS` to the comma-separated frontend origin allowlist.
+- `VITE_API_BASE_URL` configures the frontend API origin; leaving it unset keeps local relative `/api` requests.
 - The server stores the token mapped to an account subject in an in-memory session store.
 - Logout deletes the server-side session and expires the cookie.
 - The store is behind a small interface so a durable store can be introduced when the backend is moved to a multi-instance Worker runtime.
@@ -151,7 +152,7 @@ Backend tests use Node’s built-in test runner against an in-memory `sql.js` da
 - Unauthenticated protected requests returning `401`.
 - Logout invalidating the session and making protected access fail.
 
-Frontend tests cover the pure role-to-dashboard and route-guard decisions for unauthenticated, allowed-role, and wrong-role cases. The production web build verifies the React route and layout integration.
+Frontend tests cover the pure role-to-dashboard and route-guard decisions plus AuthProvider refresh restoration, wrong-role redirects, and logout state clearing. The production web build verifies the React route and layout integration.
 
 ## Security boundaries
 
