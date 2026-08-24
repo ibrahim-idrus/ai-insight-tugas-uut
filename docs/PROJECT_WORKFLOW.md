@@ -70,6 +70,8 @@ If the repository does not yet define package scripts or helper commands, docume
 
 Use Vercel previews for review.
 
+For meaningful frontend changes, validate in a Vercel preview before claiming the work is ready.
+
 Configure only frontend environment variables in Vercel.
 
 Do not claim production success without a verified deployment URL and explicit user approval.
@@ -79,6 +81,8 @@ Do not claim production success without a verified deployment URL and explicit u
 Keep API code and bindings in the Cloudflare Workers project.
 
 Use Wrangler and current official Cloudflare documentation when implementing or changing Worker behavior.
+
+For meaningful backend/API changes, use the relevant preview path when available before claiming the work is ready.
 
 Keep Worker secrets in Cloudflare secret storage.
 
