@@ -12,6 +12,7 @@ import {
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { dashboardForRole, guardDestination } from "./auth/routing";
 import type { Role } from "./auth/types";
+import HeadmasterDashboard from "./headmaster/Dashboard";
 import { TeacherClassesPage } from "./teacher/pages/TeacherClassesPage";
 import { TeacherContextPage } from "./teacher/pages/TeacherContextPage";
 import { TeacherMaterialPage } from "./teacher/pages/TeacherMaterialPage";
@@ -349,7 +350,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute role="headmaster" />} path="/headmaster">
         <Route element={<RoleLayout role="headmaster" />}>
           <Route element={<Navigate replace to="dashboard" />} index />
-          <Route element={<PlaceholderPage description="Your protected headmaster workspace is active." title="Dashboard" />} path="dashboard" />
+          <Route element={<HeadmasterDashboard />} path="dashboard" />
           <Route element={<PlaceholderPage description="Class tools will be added in a later LMS slice." title="Classes" />} path="classes" />
           <Route element={<PlaceholderPage description="Student tools will be added in a later LMS slice." title="Students" />} path="students" />
           <Route element={<PlaceholderPage description="Teacher tools will be added in a later LMS slice." title="Teachers" />} path="teachers" />
