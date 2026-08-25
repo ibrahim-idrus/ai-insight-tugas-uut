@@ -945,3 +945,40 @@ test("Assignment edit loads, updates, and shows mutation failures", async () => 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("Assignment edit preserves schedule seconds and timezone offsets", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
+  const preciseAssignment = {
+    ...assignmentFixture,
+    startAt: "2026-08-25T08:00:12+07:00",
+    dueAt: "2026-09-01T23:59:59Z",
+  };
+  globalThis.fetch = (async (input, init) => {
+    requests.push({ input: String(input), init });
+    if (String(input) === "/api/teacher/classes") return new Response(JSON.stringify({ contexts: [assignmentContext] }), { status: 200 });
+    if (init?.method === "PATCH") return new Response(JSON.stringify({ error: "Save failed" }), { status: 500 });
+    return new Response(JSON.stringify(preciseAssignment), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter initialEntries={["/teacher/assignments/8/edit"]}><Routes><Route element={<TeacherAssignmentPage mode="edit" />} path="/teacher/assignments/:assignmentId/edit" /></Routes></MemoryRouter>);
+    });
+    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.value, preciseAssignment.startAt);
+    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.value, preciseAssignment.dueAt);
+    await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
+
+    assert.deepEqual(JSON.parse(String(requests[2]?.init?.body)), {
+      subjectTeacherAssignmentId: 1,
+      title: preciseAssignment.title,
+      description: preciseAssignment.description,
+      assignmentType: preciseAssignment.assignmentType,
+      startAt: preciseAssignment.startAt,
+      dueAt: preciseAssignment.dueAt,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

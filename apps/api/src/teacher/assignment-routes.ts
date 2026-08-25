@@ -30,6 +30,16 @@ function parseOptionalText(value: unknown, fallback: string | null | undefined):
   return text || null;
 }
 
+function isValidDateTime(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(value)) return false;
+  return Number.isFinite(Date.parse(value.replace(" ", "T")));
+}
+
+function parseOptionalDateTime(value: unknown, fallback: string | null | undefined): string | null | undefined {
+  const parsed = parseOptionalText(value, fallback);
+  return parsed === null || parsed === undefined || isValidDateTime(parsed) ? parsed : undefined;
+}
+
 function isAssignmentType(value: unknown): value is AssignmentType {
   return typeof value === "string" && ASSIGNMENT_TYPES.includes(value as AssignmentType);
 }
@@ -70,9 +80,9 @@ async function parseAssignmentInput(
 
   const description = parseOptionalText(input.description, defaults.description ?? null);
   if (description === undefined) return { error: "Description is invalid" };
-  const startAt = parseOptionalText(input.startAt, defaults.startAt ?? null);
+  const startAt = parseOptionalDateTime(input.startAt, defaults.startAt ?? null);
   if (startAt === undefined) return { error: "Start date is invalid" };
-  const dueAt = parseOptionalText(input.dueAt, defaults.dueAt ?? null);
+  const dueAt = parseOptionalDateTime(input.dueAt, defaults.dueAt ?? null);
   if (dueAt === undefined) return { error: "Due date is invalid" };
 
   return {

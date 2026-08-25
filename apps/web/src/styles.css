@@ -907,7 +907,7 @@ button:disabled {
 .assignment-form .danger-button:hover:not(:disabled) { background: #fff4f2; border-color: #f2c5bd; }
 
 .assignment-form select,
-.assignment-form input[type="datetime-local"] {
+.assignment-form .assignment-datetime {
   background: var(--page);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -919,7 +919,7 @@ button:disabled {
 }
 
 .assignment-form select:focus,
-.assignment-form input[type="datetime-local"]:focus { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12); }
+.assignment-form .assignment-datetime:focus { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12); }
 
 .login-footer-copy {
   border-top: 1px solid var(--border);

@@ -31,7 +31,7 @@ const typeLabels: Record<AssignmentType, string> = { quiz: "Quiz", task: "Regula
 const statusLabels: Record<AssignmentStatus, string> = { draft: "Draft", published: "Published", closed: "Closed" };
 
 function inputDate(value: string | null): string {
-  return value ? value.replace(" ", "T").slice(0, 16) : "";
+  return value ?? "";
 }
 
 function formFromAssignment(assignment: TeacherAssignment): AssignmentFormInput {
@@ -219,9 +219,9 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
             <option value="quiz">Quiz</option><option value="task">Regular task</option><option value="upload">Upload / evidence task</option>
           </select>
           <label htmlFor="assignment-start-at">Start</label>
-          <input id="assignment-start-at" onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))} type="datetime-local" value={form.startAt} />
+          <input className="assignment-datetime" id="assignment-start-at" onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))} placeholder="YYYY-MM-DDTHH:MM" type="text" value={form.startAt} />
           <label htmlFor="assignment-due-at">Due</label>
-          <input id="assignment-due-at" onChange={(event) => setForm((current) => ({ ...current, dueAt: event.target.value }))} type="datetime-local" value={form.dueAt} />
+          <input className="assignment-datetime" id="assignment-due-at" onChange={(event) => setForm((current) => ({ ...current, dueAt: event.target.value }))} placeholder="YYYY-MM-DDTHH:MM" type="text" value={form.dueAt} />
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button className="primary-button" disabled={isSubmitting} type="submit">{isSubmitting ? "Saving assignment…" : "Save assignment"}</button>
           {mode === "edit" ? <button className="danger-button" disabled={isSubmitting} onClick={() => void handleDelete()} type="button">Delete assignment</button> : null}

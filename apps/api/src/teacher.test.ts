@@ -417,6 +417,7 @@ test("validates assignment input, context ownership, IDs, and transitions", asyn
     { subjectTeacherAssignmentId: ownContextId, title: "  ", assignmentType: "task" },
     { subjectTeacherAssignmentId: ownContextId, title: "Task", assignmentType: "essay" },
     { subjectTeacherAssignmentId: ownContextId, title: "Task", assignmentType: "task", startAt: 123 },
+    { subjectTeacherAssignmentId: ownContextId, title: "Task", assignmentType: "task", startAt: "not-a-date" },
   ]) {
     const response = await app.request("/api/teacher/assignments", {
       method: "POST",
