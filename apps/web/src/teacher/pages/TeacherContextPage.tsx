@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getTeacherClass } from "../api";
+import { parseTeacherRouteId } from "../route";
 import type { TeacherContextDetails } from "../types";
 
 function formatUpdatedDate(value: string): string {
@@ -16,8 +17,8 @@ export function TeacherContextPage() {
     setContext(null);
     setError("");
 
-    const id = Number(contextId);
-    if (!Number.isInteger(id) || id <= 0) {
+    const id = parseTeacherRouteId(contextId);
+    if (id === null) {
       setError("Class context not found");
       return;
     }

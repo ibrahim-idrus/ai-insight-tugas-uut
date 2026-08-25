@@ -26,6 +26,14 @@ test("Classes page renders assigned classes grouped by academic period", async (
             studentCount: 5,
             materialCount: 2,
           },
+          {
+            id: 2,
+            class: { id: 2, name: "XI-B", gradeLevel: 11 },
+            subject: { id: 2, name: "Bahasa Inggris", code: "ENG" },
+            academicPeriod: { id: 2, schoolYear: "2024/2025", semester: 2 },
+            studentCount: 4,
+            materialCount: 1,
+          },
         ],
       }),
       { status: 200 }
@@ -43,9 +51,17 @@ test("Classes page renders assigned classes grouped by academic period", async (
     });
 
     const output = renderedText(renderer);
-    for (const text of ["X-A", "Matematika", "2025/2026", "5 students", "2 materials"]) {
+    for (const text of ["X-A", "Matematika", "2025/2026", "5 students", "2 materials", "XI-B", "Bahasa Inggris", "2024/2025", "4 students", "1 material"]) {
       assert.match(output, new RegExp(text));
     }
+    const periodGroups = renderer.root.findAllByType("section").filter(
+      (group) => group.props.className !== "page-content" && group.findAllByProps({ className: "placeholder-grid" }).length > 0
+    );
+    assert.equal(periodGroups.length, 2);
+    assert.deepEqual(
+      periodGroups.map((group) => group.findAllByProps({ className: "eyebrow" })[0]?.props.children),
+      ["2025/2026 · Semester 1", "2024/2025 · Semester 2"]
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -211,6 +227,42 @@ test("Context page shows a Classes link when its context is not found", async ()
     const output = renderedText(renderer);
     assert.match(output, /Class context not found/);
     assert.match(output, /Classes/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Context page rejects non-digit route IDs before fetching", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (async (input) => {
+    requests.push(String(input));
+    return new Response(JSON.stringify({
+      id: 1,
+      class: { id: 1, name: "X-A", gradeLevel: 10 },
+      subject: { id: 1, name: "Matematika", code: "MTK" },
+      academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+      studentCount: 0,
+      materialCount: 0,
+      students: [],
+      materials: [],
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1e0"]}>
+          <Routes>
+            <Route element={<TeacherContextPage />} path="/teacher/classes/:contextId" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    assert.deepEqual(requests, []);
+    assert.match(renderedText(renderer), /Class context not found/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -389,6 +441,31 @@ test("Material create page shows the material form without loading a material", 
   }
 });
 
+test("Material create rejects a non-digit context ID before rendering a form", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (() => {
+    assert.fail("Invalid material context IDs must not fetch or render a form");
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1e0/materials/new"]}>
+          <Routes>
+            <Route element={<TeacherMaterialPage mode="create" />} path="/teacher/classes/:contextId/materials/new" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    assert.match(renderedText(renderer), /Material not found/);
+    assert.equal(renderer.root.findAllByType("form").length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Material create saves trimmed allowed fields and navigates to the saved material", async () => {
   const originalFetch = globalThis.fetch;
   const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
@@ -526,6 +603,32 @@ test("Material edit loads, saves allowed fields, and navigates to its view", asy
     });
     assert.match(renderedText(renderer), /teacher\/classes\/1\/materials\/5/);
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test("Material edit shows an initial load error outside the form", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/classes/1/materials/5");
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1/materials/5/edit"]}>
+          <Routes>
+            <Route element={<TeacherMaterialPage mode="edit" />} path="/teacher/classes/:contextId/materials/:materialId/edit" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    assert.match(renderedText(renderer), /Forbidden/);
+    assert.equal(renderer.root.findAllByType("form").length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Material edit confirms deletion and returns to its class", async () => {

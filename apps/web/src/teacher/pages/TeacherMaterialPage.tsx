@@ -7,6 +7,7 @@ import {
   getTeacherMaterial,
   updateTeacherMaterial,
 } from "../api";
+import { parseTeacherRouteId } from "../route";
 import type { MaterialFormInput, TeacherMaterial } from "../types";
 
 type MaterialPageMode = "create" | "view" | "edit";
@@ -16,12 +17,6 @@ interface TeacherMaterialPageProps {
 }
 
 const emptyForm: MaterialFormInput = { title: "", description: "", content: "" };
-
-function validId(value: string | undefined): number | null {
-  if (!value || !/^\d+$/.test(value)) return null;
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
 
 function formInput(form: MaterialFormInput): MaterialFormInput {
   return {
@@ -37,24 +32,26 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
   const [material, setMaterial] = useState<TeacherMaterial | null>(null);
   const [form, setForm] = useState<MaterialFormInput>(emptyForm);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const contextNumber = validId(contextId);
-  const materialNumber = validId(materialId);
+  const contextNumber = parseTeacherRouteId(contextId);
+  const materialNumber = parseTeacherRouteId(materialId);
 
   useEffect(() => {
     setMaterial(null);
     setError("");
+    setLoadError("");
     setForm(emptyForm);
 
-    if (mode === "create") return;
-    if (!contextNumber || !materialNumber) {
+    if (!contextNumber || (mode !== "create" && !materialNumber)) {
       setError("Material not found");
       return;
     }
+    if (mode === "create") return;
 
     let active = true;
-    void getTeacherMaterial(contextNumber, materialNumber)
+    void getTeacherMaterial(contextNumber, materialNumber!)
       .then((loadedMaterial) => {
         if (!active) return;
         setMaterial(loadedMaterial);
@@ -66,9 +63,13 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
       })
       .catch((requestError: unknown) => {
         if (!active) return;
-        setError(requestError instanceof TeacherApiError && requestError.status === 404
-          ? "Material not found"
-          : requestError instanceof Error ? requestError.message : "Unable to load material");
+        if (requestError instanceof TeacherApiError && requestError.status === 404) {
+          setError("Material not found");
+        } else if (mode === "edit") {
+          setLoadError(requestError instanceof Error ? requestError.message : "Unable to load material");
+        } else {
+          setError(requestError instanceof Error ? requestError.message : "Unable to load material");
+        }
       });
 
     return () => {
@@ -164,7 +165,8 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
         <div><span className="eyebrow">Learning resources</span><h1>{title}</h1></div>
         {classesLink}
       </div>
-      {mode === "edit" && !material && !error ? <p>Loading material…</p> : null}
+      {mode === "edit" && loadError ? <p className="form-error" role="alert">{loadError}</p> : null}
+      {mode === "edit" && !material && !error && !loadError ? <p>Loading material…</p> : null}
       {(mode === "create" || material) ? (
         <form className="login-form" onSubmit={(event) => void handleSubmit(event)}>
           <label htmlFor="material-title">Title</label>
