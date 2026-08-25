@@ -73,9 +73,9 @@ INSERT INTO subjects (name, code) VALUES
 -- ============================================================
 -- 4. academic_periods (2 periods)
 -- ============================================================
-INSERT INTO academic_periods (school_year, semester, start_date, end_date) VALUES
-('2025/2026', 1, '2025-07-14', '2025-12-20'),
-('2025/2026', 2, '2026-01-05', '2026-06-15');
+INSERT INTO academic_periods (school_year, semester, start_date, end_date, is_active) VALUES
+('2025/2026', 1, '2025-07-14', '2025-12-20', 1),
+('2025/2026', 2, '2026-01-05', '2026-06-15', 0);
 
 -- ============================================================
 -- 5. students (30 academic profiles linked to users)

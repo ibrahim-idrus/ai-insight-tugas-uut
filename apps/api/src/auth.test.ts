@@ -13,34 +13,7 @@ async function createTestDatabase(): Promise<Database> {
   SQL ??= await initSqlJs();
   const database = new SQL.Database();
 
-  database.run(`
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('headmaster', 'teacher', 'student')),
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-    CREATE TABLE classes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      grade_level INTEGER NOT NULL
-    );
-    CREATE TABLE students (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL UNIQUE,
-      nis TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      class_id INTEGER NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (class_id) REFERENCES classes(id)
-    );
-  `);
+  database.run(readFileSync(resolve(import.meta.dirname, "../../../database/migration.sql"), "utf8"));
 
   database.run("INSERT INTO classes (name, grade_level) VALUES (?, ?)", ["X-A", 10]);
 
