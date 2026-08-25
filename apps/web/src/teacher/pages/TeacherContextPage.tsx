@@ -72,7 +72,10 @@ export function TeacherContextPage() {
                 </thead>
                 <tbody>
                   {context.students.map((student) => (
-                    <tr key={student.id}><td>{student.name}</td><td>{student.nis}</td></tr>
+                    <tr key={student.id}>
+                      <td data-label="Name">{student.name}</td>
+                      <td data-label="NIS">{student.nis}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -95,9 +98,9 @@ export function TeacherContextPage() {
                 <tbody>
                   {context.materials.map((material) => (
                     <tr key={material.id}>
-                      <td>{material.title}</td>
-                      <td>{formatUpdatedDate(material.updatedAt)}</td>
-                      <td>
+                      <td data-label="Title">{material.title}</td>
+                      <td data-label="Updated">{formatUpdatedDate(material.updatedAt)}</td>
+                      <td data-label="Actions">
                         <Link to={`/teacher/classes/${context.id}/materials/${material.id}`}>View</Link>{" "}
                         <Link to={`/teacher/classes/${context.id}/materials/${material.id}/edit`}>Edit</Link>
                       </td>

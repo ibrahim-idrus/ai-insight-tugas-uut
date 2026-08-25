@@ -141,6 +141,10 @@ test("Context page renders its students and materials", async () => {
     for (const text of ["X-A", "Matematika", "Ayu Lestari", "1001", "Bima Pratama", "1002", "Aljabar Dasar"]) {
       assert.match(output, new RegExp(text));
     }
+    assert.deepEqual(
+      renderer.root.findAllByType("td").map((cell) => cell.props["data-label"]),
+      ["Name", "NIS", "Name", "NIS", "Title", "Updated", "Actions"]
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

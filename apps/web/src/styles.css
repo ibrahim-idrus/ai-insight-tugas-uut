@@ -896,6 +896,17 @@ button:disabled {
     padding: 7px 16px;
   }
 
+  .page-content td[data-label]::before {
+    color: var(--muted);
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+  }
+
   .page-content .login-form {
     padding: 22px;
   }
