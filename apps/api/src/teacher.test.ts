@@ -605,3 +605,194 @@ test("reports a safe mutation failure when an assignment has dependent submissio
   const stillThere = await app.request(`/api/teacher/assignments/${assignmentId}`, { headers: { Cookie: cookie } });
   assert.equal(stillThere.status, 200);
 });
+
+test("builds an owned quiz with question CRUD, reorder, and dynamic total points", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+  const quizId = assignmentIdFor(database, contextIdFor(database, 2, 1, 1, 1), "Quiz Aljabar Dasar");
+
+  const initial = await app.request(`/api/teacher/assignments/${quizId}/quiz`, {
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(initial.status, 200);
+  const initialBody = await initial.json();
+  assert.equal(initialBody.assignment.id, quizId);
+  assert.equal(initialBody.questions.length, 5);
+  assert.equal(initialBody.totalPoints, 60);
+  assert.equal(initialBody.questions[0].questionText, "Hasil dari 2x + 3x adalah...");
+  assert.equal(initialBody.questions[0].answerKey, "5x");
+
+  const created = await app.request(`/api/teacher/assignments/${quizId}/quiz/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({
+      teacher_id: 3,
+      questionText: "Apa ibu kota Indonesia?",
+      questionType: "short_answer",
+      points: 5,
+      answerKey: "Jakarta",
+    }),
+  });
+  assert.equal(created.status, 201);
+  const question = await created.json();
+  assert.equal(question.questionText, "Apa ibu kota Indonesia?");
+  assert.equal(question.points, 5);
+  assert.equal(question.answerKey, "Jakarta");
+
+  const updated = await app.request(`/api/teacher/assignments/${quizId}/quiz/questions/${question.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ questionText: "Ibu kota Republik Indonesia?", points: 15, answerKey: "Jakarta" }),
+  });
+  assert.equal(updated.status, 200);
+  assert.equal((await updated.json()).points, 15);
+
+  const reordered = await app.request(`/api/teacher/assignments/${quizId}/quiz/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ questionIds: [question.id, 1, 2, 3, 4, 5] }),
+  });
+  assert.equal(reordered.status, 200);
+  const reorderedBody = await reordered.json();
+  assert.equal(reorderedBody.questions[0].id, question.id);
+  assert.equal(reorderedBody.questions[0].questionOrder, 1);
+  assert.equal(reorderedBody.totalPoints, 75);
+
+  const foreign = await app.request(`/api/teacher/assignments/${quizId}/quiz`, {
+    headers: { Cookie: foreignCookie },
+  });
+  assert.equal(foreign.status, 404);
+
+  const deleted = await app.request(`/api/teacher/assignments/${quizId}/quiz/questions/${question.id}`, {
+    method: "DELETE",
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(deleted.status, 204);
+
+  const afterDelete = await app.request(`/api/teacher/assignments/${quizId}/quiz`, {
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal((await afterDelete.json()).totalPoints, 60);
+});
+
+test("returns every student in an owned assignment class, including not-started students", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+  const assignmentId = assignmentIdFor(database, contextIdFor(database, 2, 1, 1, 1), "Tugas Rumah Persamaan Linear");
+
+  const response = await app.request(`/api/teacher/assignments/${assignmentId}/results`, {
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.students.length, 5);
+  assert.deepEqual(
+    body.students.map((student: any) => [student.id, student.status]),
+    [[1, "graded"], [2, "graded"], [3, "graded"], [4, "not_started"], [5, "not_started"]]
+  );
+  assert.equal(body.students[0].submittedAt, "2025-08-10 15:00:00");
+  assert.equal(body.students[0].score, 28);
+
+  const foreign = await app.request(`/api/teacher/assignments/${assignmentId}/results`, {
+    headers: { Cookie: foreignCookie },
+  });
+  assert.equal(foreign.status, 404);
+});
+
+test("filters teacher grades and computes normalized averages from owned submissions", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+  const contextId = contextIdFor(database, 2, 1, 1, 1);
+
+  const response = await app.request(`/api/teacher/grades?context_id=${contextId}&search=Ahmad`, {
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.grades.length, 1);
+  assert.equal(body.grades[0].studentId, 1);
+  assert.equal(body.grades[0].gradedCount, 2);
+  assert.equal(body.grades[0].submittedCount, 2);
+  assert.equal(body.grades[0].assignmentCount, 2);
+  assert.ok(Math.abs(body.grades[0].averageScore - 84.1666666667) < 0.0001);
+
+  const foreignContext = contextIdFor(database, 3, 1, 2, 1);
+  const foreign = await app.request(`/api/teacher/grades?context_id=${foreignContext}`, {
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(foreign.status, 404);
+
+  const foreignTeacher = await app.request("/api/teacher/grades", {
+    headers: { Cookie: foreignCookie },
+  });
+  assert.equal(foreignTeacher.status, 200);
+  const foreignBody = await foreignTeacher.json();
+  assert.equal(foreignBody.grades.some((grade: any) => grade.assignmentTitles?.includes("Quiz Aljabar Dasar")), false);
+});
+
+test("restricts homeroom rosters and attitude upserts to the authenticated homeroom teacher", async () => {
+  const { app } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+
+  const list = await app.request("/api/teacher/homeroom", { headers: { Cookie: ownerCookie } });
+  assert.equal(list.status, 200);
+  const homerooms = await list.json();
+  assert.ok(homerooms.homerooms.some((homeroom: any) => homeroom.id === 1 && homeroom.class.name === "X-A"));
+
+  const detail = await app.request("/api/teacher/homeroom/1", { headers: { Cookie: ownerCookie } });
+  assert.equal(detail.status, 200);
+  const detailBody = await detail.json();
+  assert.equal(detailBody.students.length, 5);
+  assert.equal(detailBody.students[0].attitude.score, "A");
+
+  const updated = await app.request("/api/teacher/homeroom/1/students/1/attitude", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ teacher_id: 3, score: "C", description: "Needs more focus" }),
+  });
+  assert.equal(updated.status, 200);
+  const updatedBody = await updated.json();
+  assert.equal(updatedBody.score, "C");
+  assert.equal(updatedBody.description, "Needs more focus");
+  assert.equal(updatedBody.teacherId, 2);
+
+  const invalid = await app.request("/api/teacher/homeroom/1/students/1/attitude", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ score: "E" }),
+  });
+  assert.equal(invalid.status, 400);
+
+  const foreign = await app.request("/api/teacher/homeroom/1", { headers: { Cookie: foreignCookie } });
+  assert.equal(foreign.status, 404);
+  const foreignWrite = await app.request("/api/teacher/homeroom/1/students/1/attitude", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Cookie: foreignCookie },
+    body: JSON.stringify({ score: "A" }),
+  });
+  assert.equal(foreignWrite.status, 404);
+});
+
+test("returns a teacher-owned dashboard summary instead of the placeholder response", async () => {
+  const { app } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+
+  const response = await app.request("/api/teacher/dashboard", { headers: { Cookie: ownerCookie } });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, undefined);
+  assert.ok(body.contexts.length > 0);
+  assert.ok(body.assignments.total > 0);
+  assert.ok(body.submissions.total > 0);
+  assert.ok(body.recentAssignments.some((assignment: any) => assignment.title === "Quiz Aljabar Dasar"));
+  assert.equal(typeof body.performance.averageScore, "number");
+
+  const foreignResponse = await app.request("/api/teacher/dashboard", { headers: { Cookie: foreignCookie } });
+  const foreignBody = await foreignResponse.json();
+  assert.equal(foreignBody.recentAssignments.some((assignment: any) => assignment.title === "Quiz Aljabar Dasar"), false);
+});

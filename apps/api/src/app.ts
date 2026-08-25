@@ -16,6 +16,9 @@ import {
   type SessionStore,
 } from "./auth/session-store.js";
 import { registerTeacherAssignmentRoutes } from "./teacher/assignment-routes.js";
+import { registerTeacherAnalyticsRoutes } from "./teacher/analytics-routes.js";
+import { registerTeacherHomeroomRoutes } from "./teacher/homeroom-routes.js";
+import { registerTeacherQuizRoutes } from "./teacher/quiz-routes.js";
 
 const DB_PATH = join(import.meta.dirname, "../../../database/lms.db");
 
@@ -129,11 +132,11 @@ export function createApp(
     return context.body(null, 204);
   });
 
-  app.get("/api/teacher/dashboard", requireRole(database, sessions, "teacher"), (context) => {
-    return context.json({ ok: true, role: "teacher" });
-  });
   registerTeacherRoutes(app, database, sessions, persist);
   registerTeacherAssignmentRoutes(app, database, sessions, persist);
+  registerTeacherQuizRoutes(app, database, sessions, persist);
+  registerTeacherAnalyticsRoutes(app, database, sessions, persist);
+  registerTeacherHomeroomRoutes(app, database, sessions, persist);
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
     const periodId = context.req.query("academic_period_id");
 
