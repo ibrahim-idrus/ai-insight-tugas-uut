@@ -38,7 +38,11 @@ export function saveDb() {
   writeFileSync(DB_PATH, buffer);
 }
 
-export function createApp(database: Database, sessions: SessionStore = new MemorySessionStore()) {
+export function createApp(
+  database: Database,
+  sessions: SessionStore = new MemorySessionStore(),
+  persist: () => void = () => {}
+) {
   const app = new Hono<AuthEnv>();
   const allowedOrigins = new Set(
     (process.env.CORS_ORIGINS ?? "http://localhost:5173")
@@ -126,7 +130,7 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
   app.get("/api/teacher/dashboard", requireRole(database, sessions, "teacher"), (context) => {
     return context.json({ ok: true, role: "teacher" });
   });
-  registerTeacherRoutes(app, database, sessions, saveDb);
+  registerTeacherRoutes(app, database, sessions, persist);
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
     return context.json({ ok: true, role: "headmaster" });
   });

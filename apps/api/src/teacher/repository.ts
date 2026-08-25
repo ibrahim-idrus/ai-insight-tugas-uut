@@ -2,6 +2,7 @@ import type { Database } from "sql.js";
 import type {
   TeacherContextDetails,
   TeacherContextSummary,
+  MaterialInput,
   TeacherMaterial,
   TeacherStudent,
 } from "./types.js";
@@ -135,4 +136,128 @@ export function findTeacherContext(
   }));
 
   return { ...context, students, materials };
+}
+
+interface MaterialRow {
+  id: number;
+  title: string;
+  description: string | null;
+  content: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function toTeacherMaterial(material: MaterialRow): TeacherMaterial {
+  return {
+    id: Number(material.id),
+    title: String(material.title),
+    description: material.description === null ? null : String(material.description),
+    content: material.content === null ? null : String(material.content),
+    createdAt: String(material.createdAt),
+    updatedAt: String(material.updatedAt),
+  };
+}
+
+function selectTeacherMaterial(
+  database: Database,
+  teacherId: number,
+  contextId: number,
+  materialId: number
+): TeacherMaterial | null {
+  const material = queryRows<MaterialRow>(
+    database,
+    `
+      SELECT m.id, m.title, m.description, m.content, m.created_at AS createdAt, m.updated_at AS updatedAt
+      FROM materials m
+      JOIN subject_teacher_assignments sta ON sta.id = m.subject_teacher_assignment_id
+      WHERE m.id = ? AND sta.id = ? AND sta.teacher_id = ?
+    `,
+    [materialId, contextId, teacherId]
+  )[0];
+  return material ? toTeacherMaterial(material) : null;
+}
+
+export function findTeacherMaterial(
+  database: Database,
+  teacherId: number,
+  contextId: number,
+  materialId: number
+): TeacherMaterial | null {
+  return selectTeacherMaterial(database, teacherId, contextId, materialId);
+}
+
+export function createTeacherMaterial(
+  database: Database,
+  teacherId: number,
+  contextId: number,
+  input: MaterialInput
+): TeacherMaterial | null {
+  const ownedContext = queryRows<{ id: number }>(
+    database,
+    "SELECT sta.id FROM subject_teacher_assignments sta WHERE sta.id = ? AND sta.teacher_id = ?",
+    [contextId, teacherId]
+  )[0];
+  if (!ownedContext) return null;
+
+  database.run(
+    `
+      INSERT INTO materials (subject_teacher_assignment_id, title, description, content)
+      VALUES (?, ?, ?, ?)
+    `,
+    [contextId, input.title, input.description, input.content]
+  );
+  const materialId = queryRows<{ id: number }>(database, "SELECT last_insert_rowid() AS id", [])[0]?.id;
+  return materialId === undefined
+    ? null
+    : selectTeacherMaterial(database, teacherId, contextId, Number(materialId));
+}
+
+export function updateTeacherMaterial(
+  database: Database,
+  teacherId: number,
+  contextId: number,
+  materialId: number,
+  input: MaterialInput
+): TeacherMaterial | null {
+  database.run(
+    `
+      UPDATE materials AS m
+      SET title = ?, description = ?, content = ?, updated_at = datetime('now')
+      WHERE m.id = ?
+        AND EXISTS (
+          SELECT 1
+          FROM subject_teacher_assignments sta
+          WHERE sta.id = m.subject_teacher_assignment_id
+            AND sta.id = ?
+            AND sta.teacher_id = ?
+        )
+    `,
+    [input.title, input.description, input.content, materialId, contextId, teacherId]
+  );
+  return database.getRowsModified() === 1
+    ? selectTeacherMaterial(database, teacherId, contextId, materialId)
+    : null;
+}
+
+export function deleteTeacherMaterial(
+  database: Database,
+  teacherId: number,
+  contextId: number,
+  materialId: number
+): boolean {
+  database.run(
+    `
+      DELETE FROM materials AS m
+      WHERE m.id = ?
+        AND EXISTS (
+          SELECT 1
+          FROM subject_teacher_assignments sta
+          WHERE sta.id = m.subject_teacher_assignment_id
+            AND sta.id = ?
+            AND sta.teacher_id = ?
+        )
+    `,
+    [materialId, contextId, teacherId]
+  );
+  return database.getRowsModified() === 1;
 }

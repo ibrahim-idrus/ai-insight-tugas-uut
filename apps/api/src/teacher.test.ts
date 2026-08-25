@@ -109,3 +109,149 @@ test("does not disclose another teacher's teaching context", async () => {
   assert.equal(response.status, 404);
   assert.deepEqual(await response.json(), { error: "Teaching context not found" });
 });
+
+test("creates, reads, updates, and deletes a teacher-owned material", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const contextId = contextIdFor(database, 2, 1, 1, 1);
+
+  const created = await app.request(`/api/teacher/classes/${contextId}/materials`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ title: "New guide", description: "Intro", content: "Read this" }),
+  });
+
+  assert.equal(created.status, 201);
+  const material = await created.json();
+  assert.equal(material.title, "New guide");
+  assert.equal(material.description, "Intro");
+  assert.equal(material.content, "Read this");
+
+  const found = await app.request(`/api/teacher/classes/${contextId}/materials/${material.id}`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(found.status, 200);
+  assert.deepEqual(await found.json(), material);
+
+  const updated = await app.request(`/api/teacher/classes/${contextId}/materials/${material.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      teacher_id: 3,
+      title: "Updated guide",
+      description: null,
+      content: "Updated",
+    }),
+  });
+  assert.equal(updated.status, 200);
+  assert.deepEqual(await updated.json(), {
+    ...material,
+    title: "Updated guide",
+    description: null,
+    content: "Updated",
+  });
+
+  const deleted = await app.request(`/api/teacher/classes/${contextId}/materials/${material.id}`, {
+    method: "DELETE",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(deleted.status, 204);
+
+  const missing = await app.request(`/api/teacher/classes/${contextId}/materials/${material.id}`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(missing.status, 404);
+});
+
+test("does not allow a teacher to access another teacher's materials", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie: ownerCookie } = await login(app, "adminarsito", "admin123");
+  const { cookie: foreignCookie } = await login(app, "adminalfian", "admin123");
+  const foreignContextId = contextIdFor(database, 3, 1, 2, 1);
+
+  const foreignCreated = await app.request(`/api/teacher/classes/${foreignContextId}/materials`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: foreignCookie },
+    body: JSON.stringify({ title: "Foreign guide", description: "Private", content: "Do not read" }),
+  });
+  assert.equal(foreignCreated.status, 201);
+  const foreignMaterial = await foreignCreated.json();
+
+  const foreignCreate = await app.request(`/api/teacher/classes/${foreignContextId}/materials`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ title: "Intrusion" }),
+  });
+  assert.equal(foreignCreate.status, 404);
+
+  for (const request of [
+    app.request(`/api/teacher/classes/${foreignContextId}/materials/${foreignMaterial.id}`, {
+      headers: { Cookie: ownerCookie },
+    }),
+    app.request(`/api/teacher/classes/${foreignContextId}/materials/${foreignMaterial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+      body: JSON.stringify({ title: "Intrusion" }),
+    }),
+    app.request(`/api/teacher/classes/${foreignContextId}/materials/${foreignMaterial.id}`, {
+      method: "DELETE",
+      headers: { Cookie: ownerCookie },
+    }),
+  ]) {
+    assert.equal((await request).status, 404);
+  }
+
+  const wrongContext = await app.request(
+    `/api/teacher/classes/${contextIdFor(database, 2, 2, 1, 1)}/materials/${1}`,
+    { headers: { Cookie: ownerCookie } }
+  );
+  assert.equal(wrongContext.status, 404);
+});
+
+test("validates material IDs and title input", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const contextId = contextIdFor(database, 2, 1, 1, 1);
+
+  for (const input of [{}, { title: "   " }, { title: 123 }]) {
+    const response = await app.request(`/api/teacher/classes/${contextId}/materials`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: "Title is required" });
+  }
+
+  for (const input of [{ title: "Guide", description: 123 }, { title: "Guide", content: 123 }]) {
+    const response = await app.request(`/api/teacher/classes/${contextId}/materials`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400);
+  }
+
+  const normalized = await app.request(`/api/teacher/classes/${contextId}/materials`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ title: "Guide", description: "  ", content: "  " }),
+  });
+  assert.equal(normalized.status, 201);
+  const normalizedMaterial = await normalized.json();
+  assert.equal(normalizedMaterial.title, "Guide");
+  assert.equal(normalizedMaterial.description, null);
+  assert.equal(normalizedMaterial.content, null);
+
+  const invalidContext = await app.request("/api/teacher/classes/nope/materials", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ title: "Guide" }),
+  });
+  assert.equal(invalidContext.status, 400);
+
+  const invalidMaterial = await app.request(`/api/teacher/classes/${contextId}/materials/nope`, {
+    headers: { Cookie: cookie },
+  });
+  assert.equal(invalidMaterial.status, 400);
+});
