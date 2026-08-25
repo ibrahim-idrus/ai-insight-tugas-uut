@@ -6,6 +6,10 @@ import { TeacherClassesPage } from "./pages/TeacherClassesPage";
 import { TeacherContextPage } from "./pages/TeacherContextPage";
 import { TeacherMaterialPage } from "./pages/TeacherMaterialPage";
 import { deleteTeacherMaterial, updateTeacherMaterial } from "./api";
+import { TeacherAssignmentsPage } from "./pages/TeacherAssignmentsPage";
+import { TeacherAssignmentPage } from "./pages/TeacherAssignmentPage";
+import { AppRoutes } from "../App";
+import { AuthProvider } from "../auth/AuthContext";
 
 function renderedText(renderer: ReactTestRenderer): string {
   return JSON.stringify(renderer.toJSON());
@@ -701,5 +705,243 @@ test("Material edit shows save and delete request failures", async () => {
   } finally {
     globalThis.fetch = originalFetch;
     if (originalWindow) Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow }); else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
+const assignmentContext = {
+  id: 1,
+  class: { id: 1, name: "X-A", gradeLevel: 10 },
+  subject: { id: 1, name: "Matematika", code: "MTK" },
+  academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+};
+
+const assignmentFixture = {
+  id: 8,
+  subjectTeacherAssignmentId: 1,
+  title: "Quiz Aljabar Dasar",
+  description: "Kerjakan soal aljabar",
+  assignmentType: "quiz",
+  startAt: "2026-08-25T08:00",
+  dueAt: "2026-08-25T09:00",
+  status: "draft",
+  createdAt: "2026-08-01T00:00:00.000Z",
+  updatedAt: "2026-08-02T00:00:00.000Z",
+  context: assignmentContext,
+};
+
+test("Assignments page renders owned assignments and status/type labels", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/assignments");
+    return new Response(JSON.stringify({ assignments: [assignmentFixture] }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter><TeacherAssignmentsPage /></MemoryRouter>);
+    });
+
+    const output = renderedText(renderer);
+    for (const value of ["Quiz Aljabar Dasar", "X-A", "Matematika", "Draft", "Quiz", "New assignment"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignments page shows loading, empty, and error states", async () => {
+  const originalFetch = globalThis.fetch;
+  let resolveFetch!: (response: Response) => void;
+  globalThis.fetch = (() => new Promise<Response>((resolve) => { resolveFetch = resolve; })) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter><TeacherAssignmentsPage /></MemoryRouter>);
+    });
+    assert.match(renderedText(renderer), /Loading assignments/);
+
+    resolveFetch(new Response(JSON.stringify({ assignments: [] }), { status: 200 }));
+    await act(async () => { await Promise.resolve(); });
+    assert.match(renderedText(renderer), /No assignments have been created yet/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  globalThis.fetch = (async () => new Response(JSON.stringify({ error: "Unable to load assignments" }), { status: 500 })) as typeof fetch;
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<MemoryRouter><TeacherAssignmentsPage /></MemoryRouter>); });
+    assert.match(renderedText(renderer), /Unable to load assignments/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignment create loads owned contexts, sends allowed fields, and navigates to view", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
+  globalThis.fetch = (async (input, init) => {
+    requests.push({ input: String(input), init });
+    if (String(input) === "/api/teacher/classes") return new Response(JSON.stringify({ contexts: [assignmentContext] }), { status: 200 });
+    return new Response(JSON.stringify(assignmentFixture), { status: 201 });
+  }) as typeof fetch;
+
+  function Location() { return <span>{useLocation().pathname}</span>; }
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/new"]}>
+          <Routes>
+            <Route element={<TeacherAssignmentPage mode="create" />} path="/teacher/assignments/new" />
+            <Route element={<Location />} path="*" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    assert.equal(renderer.root.findByProps({ id: "assignment-context" }).props.value, "1");
+    await act(async () => {
+      renderer.root.findByProps({ id: "assignment-title" }).props.onChange({ target: { value: "New assignment" } });
+    });
+    await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
+
+    assert.equal(requests[0]?.input, "/api/teacher/classes");
+    assert.deepEqual(JSON.parse(String(requests[1]?.init?.body)), {
+      subjectTeacherAssignmentId: 1,
+      title: "New assignment",
+      description: null,
+      assignmentType: "quiz",
+      startAt: null,
+      dueAt: null,
+    });
+    assert.doesNotMatch(String(requests[1]?.init?.body), /teacher_id/);
+    assert.match(renderedText(renderer), /teacher\/assignments\/8/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignment view renders details, transition actions, and not-found state", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/assignments/8");
+    return new Response(JSON.stringify({ ...assignmentFixture, status: "published" }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8"]}>
+          <Routes><Route element={<TeacherAssignmentPage mode="view" />} path="/teacher/assignments/:assignmentId" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Quiz Aljabar Dasar", "Kerjakan soal aljabar", "Published", "Close assignment", "Edit assignment", "Delete assignment"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  globalThis.fetch = (async () => new Response(JSON.stringify({ error: "Assignment not found" }), { status: 404 })) as typeof fetch;
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8"]}>
+          <Routes><Route element={<TeacherAssignmentPage mode="view" />} path="/teacher/assignments/:assignmentId" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    assert.match(renderedText(renderer), /Assignment not found/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignment view keeps a transition failure visible", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method === "POST") return new Response(JSON.stringify({ error: "Assignment cannot be published" }), { status: 409 });
+    return new Response(JSON.stringify(assignmentFixture), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8"]}>
+          <Routes><Route element={<TeacherAssignmentPage mode="view" />} path="/teacher/assignments/:assignmentId" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    await act(async () => {
+      renderer.root.findAllByType("button").find((button) => button.props.children === "Publish assignment")!.props.onClick();
+    });
+    assert.match(renderedText(renderer), /Assignment cannot be published/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("protected teacher assignment routes resolve /new before numeric assignment routes", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    if (String(input) === "/api/auth/me") return new Response(JSON.stringify({ user: { id: 2, name: "Arsito Guru", role: "teacher" } }), { status: 200 });
+    if (String(input) === "/api/teacher/classes") return new Response(JSON.stringify({ contexts: [assignmentContext] }), { status: 200 });
+    assert.fail(`Unexpected request: ${String(input)}`);
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <AuthProvider>
+          <MemoryRouter initialEntries={["/teacher/assignments/new"]}>
+            <AppRoutes />
+          </MemoryRouter>
+        </AuthProvider>
+      );
+    });
+    assert.equal(renderer.root.findAllByProps({ id: "assignment-title" }).length, 1);
+    assert.match(renderedText(renderer), /New assignment/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignment edit loads, updates, and shows mutation failures", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
+  let failUpdate = false;
+  globalThis.fetch = (async (input, init) => {
+    requests.push({ input: String(input), init });
+    if (String(input) === "/api/teacher/classes") return new Response(JSON.stringify({ contexts: [assignmentContext] }), { status: 200 });
+    if (init?.method === "PATCH" && failUpdate) return new Response(JSON.stringify({ error: "Save failed" }), { status: 500 });
+    return new Response(JSON.stringify(assignmentFixture), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8/edit"]}>
+          <Routes><Route element={<TeacherAssignmentPage mode="edit" />} path="/teacher/assignments/:assignmentId/edit" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    assert.equal(renderer.root.findByProps({ id: "assignment-title" }).props.value, "Quiz Aljabar Dasar");
+    failUpdate = true;
+    await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
+    assert.match(renderedText(renderer), /Save failed/);
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
