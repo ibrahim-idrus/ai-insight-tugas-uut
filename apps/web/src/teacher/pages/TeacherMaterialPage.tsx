@@ -7,6 +7,7 @@ import {
   getTeacherMaterial,
   updateTeacherMaterial,
 } from "../api";
+import { TeacherBreadcrumbs } from "../components/TeacherBreadcrumbs";
 import { parseTeacherRouteId } from "../route";
 import type { MaterialFormInput, TeacherMaterial } from "../types";
 
@@ -37,6 +38,13 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
 
   const contextNumber = parseTeacherRouteId(contextId);
   const materialNumber = parseTeacherRouteId(materialId);
+  const materialBreadcrumbLabel = mode === "create" ? "New material" : mode === "edit" ? "Edit material" : material?.title ?? "Material";
+  const breadcrumbs = [
+    { label: "Teacher", to: "/teacher/dashboard" },
+    { label: "Classes", to: "/teacher/classes" },
+    { label: "Class details", to: contextNumber ? `/teacher/classes/${contextNumber}` : undefined },
+    { label: materialBreadcrumbLabel },
+  ];
 
   useEffect(() => {
     setMaterial(null);
@@ -125,6 +133,7 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
   if (error === "Material not found") {
     return (
       <section className="page-content">
+        <TeacherBreadcrumbs items={[...breadcrumbs.slice(0, -1), { label: "Material not found" }]} />
         <div className="page-heading">
           <div><span className="eyebrow">Academic portal / Classes</span><h1>Material not found</h1></div>
           {classesLink}
@@ -137,6 +146,7 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
   if (mode === "view") {
     return (
       <section className="page-content">
+        <TeacherBreadcrumbs items={breadcrumbs} />
         <div className="page-heading">
           <div>
             <span className="eyebrow">Learning resources</span>
@@ -161,6 +171,7 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
   const title = mode === "create" ? "New material" : "Edit material";
   return (
     <section className="page-content">
+      <TeacherBreadcrumbs items={breadcrumbs} />
       <div className="page-heading">
         <div><span className="eyebrow">Learning resources</span><h1>{title}</h1></div>
         {classesLink}

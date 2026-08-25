@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTeacherClasses } from "../api";
+import { TeacherBreadcrumbs } from "../components/TeacherBreadcrumbs";
 import type { TeacherContextSummary } from "../types";
 
 function pluralize(count: number, noun: string): string {
@@ -42,6 +43,7 @@ export function TeacherClassesPage() {
 
   return (
     <section className="page-content">
+      <TeacherBreadcrumbs items={[{ label: "Teacher", to: "/teacher/dashboard" }, { label: "Classes" }]} />
       <div className="page-heading">
         <div>
           <span className="eyebrow">Academic portal / Classes</span>

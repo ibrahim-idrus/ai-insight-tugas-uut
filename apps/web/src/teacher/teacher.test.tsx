@@ -11,6 +11,13 @@ function renderedText(renderer: ReactTestRenderer): string {
   return JSON.stringify(renderer.toJSON());
 }
 
+function breadcrumbLinks(renderer: ReactTestRenderer): Array<{ href: string; label: string }> {
+  return renderer.root
+    .findByProps({ "aria-label": "Breadcrumb" })
+    .findAllByType("a")
+    .map((link) => ({ href: link.props.href, label: String(link.props.children) }));
+}
+
 test("Classes page renders assigned classes grouped by academic period", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input) => {
@@ -54,6 +61,8 @@ test("Classes page renders assigned classes grouped by academic period", async (
     for (const text of ["X-A", "Matematika", "2025/2026", "5 students", "2 materials", "XI-B", "Bahasa Inggris", "2024/2025", "4 students", "1 material"]) {
       assert.match(output, new RegExp(text));
     }
+    assert.deepEqual(breadcrumbLinks(renderer), [{ href: "/teacher/dashboard", label: "Teacher" }]);
+    assert.equal(renderer.root.findByProps({ "aria-current": "page" }).props.children, "Classes");
     const periodGroups = renderer.root.findAllByType("section").filter(
       (group) => group.props.className !== "page-content" && group.findAllByProps({ className: "placeholder-grid" }).length > 0
     );
@@ -157,6 +166,11 @@ test("Context page renders its students and materials", async () => {
     for (const text of ["X-A", "Matematika", "Ayu Lestari", "1001", "Bima Pratama", "1002", "Aljabar Dasar"]) {
       assert.match(output, new RegExp(text));
     }
+    assert.deepEqual(breadcrumbLinks(renderer), [
+      { href: "/teacher/dashboard", label: "Teacher" },
+      { href: "/teacher/classes", label: "Classes" },
+    ]);
+    assert.equal(renderer.root.findByProps({ "aria-current": "page" }).props.children, "X-A · Matematika");
     assert.deepEqual(
       renderer.root.findAllByType("td").map((cell) => cell.props["data-label"]),
       ["Name", "NIS", "Name", "NIS", "Title", "Updated", "Actions"]
@@ -358,6 +372,12 @@ test("Material view renders the material and an edit link", async () => {
     for (const text of ["Aljabar Dasar", "Pengenalan aljabar", "Baca materi ini sebelum pertemuan berikutnya.", "Edit"]) {
       assert.match(output, new RegExp(text));
     }
+    assert.deepEqual(breadcrumbLinks(renderer), [
+      { href: "/teacher/dashboard", label: "Teacher" },
+      { href: "/teacher/classes", label: "Classes" },
+      { href: "/teacher/classes/1", label: "Class details" },
+    ]);
+    assert.equal(renderer.root.findByProps({ "aria-current": "page" }).props.children, "Aljabar Dasar");
   } finally {
     globalThis.fetch = originalFetch;
   }

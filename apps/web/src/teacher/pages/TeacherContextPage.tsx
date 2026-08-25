@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getTeacherClass } from "../api";
+import { TeacherBreadcrumbs } from "../components/TeacherBreadcrumbs";
 import { parseTeacherRouteId } from "../route";
 import type { TeacherContextDetails } from "../types";
 
@@ -39,6 +40,11 @@ export function TeacherContextPage() {
 
   return (
     <section className="page-content">
+      <TeacherBreadcrumbs items={[
+        { label: "Teacher", to: "/teacher/dashboard" },
+        { label: "Classes", to: "/teacher/classes" },
+        { label: context ? `${context.class.name} · ${context.subject.name}` : "Class details" },
+      ]} />
       <div className="page-heading">
         <div>
           <span className="eyebrow">Academic portal / Classes</span>
