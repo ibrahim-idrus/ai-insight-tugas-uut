@@ -75,6 +75,20 @@ CREATE TABLE academic_periods (
 -- 6. subject_teacher_assignments
 -- Connects teacher + class + subject + academic_period
 -- ============================================================
+CREATE TABLE student_enrollments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    class_id INTEGER NOT NULL,
+    academic_period_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'transferred', 'completed')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (class_id) REFERENCES classes(id),
+    FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id),
+    UNIQUE (student_id, academic_period_id)
+);
+
 CREATE TABLE subject_teacher_assignments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     teacher_id INTEGER NOT NULL,
@@ -215,6 +229,11 @@ CREATE TABLE attitudes (
 -- students
 CREATE INDEX idx_students_user_id ON students(user_id);
 CREATE INDEX idx_students_class_id ON students(class_id);
+
+-- student_enrollments
+CREATE INDEX idx_student_enrollments_student_id ON student_enrollments(student_id);
+CREATE INDEX idx_student_enrollments_class_id ON student_enrollments(class_id);
+CREATE INDEX idx_student_enrollments_period_id ON student_enrollments(academic_period_id);
 
 -- subject_teacher_assignments
 CREATE INDEX idx_sta_teacher_id ON subject_teacher_assignments(teacher_id);

@@ -71,11 +71,13 @@ INSERT INTO subjects (name, code) VALUES
 ('Pendidikan Agama Islam', 'PAI');
 
 -- ============================================================
--- 4. academic_periods (2 periods)
+-- 4. academic_periods (4 periods)
 -- ============================================================
 INSERT INTO academic_periods (school_year, semester, start_date, end_date, is_active) VALUES
-('2025/2026', 1, '2025-07-14', '2025-12-20', 1),
-('2025/2026', 2, '2026-01-05', '2026-06-15', 0);
+('2025/2026', 1, '2025-07-14', '2025-12-20', 0),
+('2025/2026', 2, '2026-01-05', '2026-06-15', 1),
+('2024/2025', 1, '2024-07-15', '2024-12-20', 0),
+('2024/2025', 2, '2025-01-06', '2025-06-14', 0);
 
 -- ============================================================
 -- 5. students (30 academic profiles linked to users)
@@ -124,19 +126,59 @@ INSERT INTO students (user_id, nis, name, class_id) VALUES
 ((SELECT id FROM users WHERE username = 'dewi.lestari'), '2023010', 'Dewi Lestari', 6);
 
 -- ============================================================
--- 6. subject_teacher_assignments
+-- 6. student_enrollments
+-- ============================================================
+INSERT INTO student_enrollments (student_id, class_id, academic_period_id)
+SELECT id, class_id, 1 FROM students;
+
+INSERT INTO student_enrollments (student_id, class_id, academic_period_id)
+SELECT id, class_id, 2 FROM students;
+
+INSERT INTO student_enrollments (student_id, class_id, academic_period_id)
+SELECT id,
+       CASE
+         WHEN id BETWEEN 1 AND 4 THEN 1
+         WHEN id BETWEEN 5 AND 8 THEN 2
+         WHEN id BETWEEN 9 AND 12 THEN 3
+         WHEN id BETWEEN 13 AND 16 THEN 4
+         WHEN id BETWEEN 17 AND 20 THEN 5
+         ELSE 6
+       END,
+       3
+FROM students
+WHERE id <= 24;
+
+INSERT INTO student_enrollments (student_id, class_id, academic_period_id)
+SELECT id,
+       CASE
+         WHEN id BETWEEN 1 AND 5 THEN 1
+         WHEN id BETWEEN 6 AND 9 THEN 2
+         WHEN id BETWEEN 10 AND 14 THEN 3
+         WHEN id BETWEEN 15 AND 18 THEN 4
+         WHEN id BETWEEN 19 AND 23 THEN 5
+         ELSE 6
+       END,
+       4
+FROM students
+WHERE id <= 27;
+
+-- ============================================================
+-- 7. subject_teacher_assignments
 -- ============================================================
 INSERT INTO subject_teacher_assignments (teacher_id, class_id, subject_id, academic_period_id) VALUES
 -- Arsito (teacher_id=2) teaches Math and Science
 (2, 1, 1, 1), (2, 2, 1, 1), (2, 3, 1, 1), (2, 4, 1, 1), (2, 5, 1, 1), (2, 6, 1, 1),
 (2, 1, 4, 1), (2, 2, 4, 1), (2, 3, 4, 1), (2, 4, 4, 1),
--- Alfian (teacher_id=3) teaches Languages and PAI
+-- Alfian (teacher_id=3) teaches Languages
 (3, 1, 2, 1), (3, 2, 2, 1), (3, 3, 2, 1), (3, 4, 2, 1),
 (3, 1, 3, 1), (3, 2, 3, 1), (3, 3, 3, 1), (3, 4, 3, 1),
-(3, 5, 8, 1), (3, 6, 8, 1);
+-- Current-period teaching contexts used by headmaster analytics fixtures
+(2, 1, 1, 2), (2, 2, 1, 2), (2, 3, 1, 2), (2, 4, 1, 2), (2, 5, 1, 2), (2, 6, 1, 2),
+(3, 1, 2, 2), (3, 2, 2, 2), (3, 3, 2, 2), (3, 4, 2, 2),
+(3, 5, 3, 2), (3, 6, 3, 2);
 
 -- ============================================================
--- 7. homeroom_assignments
+-- 8. homeroom_assignments
 -- ============================================================
 INSERT INTO homeroom_assignments (teacher_id, class_id, academic_period_id) VALUES
 (2, 1, 1),  -- Arsito -> X-A
@@ -144,10 +186,16 @@ INSERT INTO homeroom_assignments (teacher_id, class_id, academic_period_id) VALU
 (2, 3, 1),  -- Arsito -> XI-A
 (3, 4, 1),  -- Alfian -> XI-B
 (2, 5, 1),  -- Arsito -> XII-A
-(3, 6, 1);  -- Alfian -> XII-B
+(3, 6, 1),  -- Alfian -> XII-B
+(2, 1, 2),  -- Arsito -> X-A
+(3, 2, 2),  -- Alfian -> X-B
+(2, 3, 2),  -- Arsito -> XI-A
+(3, 4, 2),  -- Alfian -> XI-B
+(2, 5, 2),  -- Arsito -> XII-A
+(3, 6, 2);  -- Alfian -> XII-B
 
 -- ============================================================
--- 8. assignments (various types)
+-- 9. assignments (various types)
 -- ============================================================
 INSERT INTO assignments (subject_teacher_assignment_id, title, description, assignment_type, start_at, due_at, status) VALUES
 -- Math assignments (sta_id = 1-6)
@@ -162,10 +210,23 @@ INSERT INTO assignments (subject_teacher_assignment_id, title, description, assi
 (11, 'Quiz Tatabahasa', 'Kerjakan soal tatabahasa', 'quiz', '2025-08-20 08:00:00', '2025-08-20 09:00:00', 'published'),
 -- English assignments (sta_id = 15-18)
 (15, 'Tugas Reading Comprehension', 'Baca teks dan jawab pertanyaan', 'task', '2025-08-08 08:00:00', '2025-08-15 23:59:00', 'published'),
-(15, 'Quiz Vocabulary', 'Kerjakan soal vocabulary', 'quiz', '2025-08-22 08:00:00', '2025-08-22 09:00:00', 'published');
+(15, 'Quiz Vocabulary', 'Kerjakan soal vocabulary', 'quiz', '2025-08-22 08:00:00', '2025-08-22 09:00:00', 'published'),
+-- Current-period math and language assignments (sta_id = 19-30)
+(19, 'Evaluasi Semester X-A 1', 'Penilaian period 2 kelas X-A', 'quiz', '2026-02-02 08:00:00', '2026-02-02 10:00:00', 'published'),
+(19, 'Latihan Semester X-A 2', 'Latihan tindak lanjut kelas X-A', 'task', '2026-02-09 08:00:00', '2026-02-11 23:59:00', 'published'),
+(20, 'Evaluasi Semester X-B 1', 'Penilaian period 2 kelas X-B', 'quiz', '2026-02-03 08:00:00', '2026-02-03 10:00:00', 'published'),
+(20, 'Latihan Semester X-B 2', 'Latihan tindak lanjut kelas X-B', 'task', '2026-02-10 08:00:00', '2026-02-12 23:59:00', 'published'),
+(21, 'Evaluasi Semester XI-A 1', 'Penilaian period 2 kelas XI-A', 'quiz', '2026-02-04 08:00:00', '2026-02-04 10:00:00', 'published'),
+(21, 'Latihan Semester XI-A 2', 'Latihan tindak lanjut kelas XI-A', 'task', '2026-02-11 08:00:00', '2026-02-13 23:59:00', 'published'),
+(22, 'Evaluasi Semester XI-B 1', 'Penilaian period 2 kelas XI-B', 'quiz', '2026-02-05 08:00:00', '2026-02-05 10:00:00', 'published'),
+(22, 'Latihan Semester XI-B 2', 'Latihan tindak lanjut kelas XI-B', 'task', '2026-02-12 08:00:00', '2026-02-14 23:59:00', 'published'),
+(23, 'Evaluasi Semester XII-A 1', 'Penilaian period 2 kelas XII-A', 'quiz', '2026-02-06 08:00:00', '2026-02-06 10:00:00', 'published'),
+(23, 'Latihan Semester XII-A 2', 'Latihan tindak lanjut kelas XII-A', 'task', '2026-02-13 08:00:00', '2026-02-15 23:59:00', 'published'),
+(24, 'Evaluasi Semester XII-B 1', 'Penilaian period 2 kelas XII-B', 'quiz', '2026-02-07 08:00:00', '2026-02-07 10:00:00', 'published'),
+(24, 'Latihan Semester XII-B 2', 'Latihan tindak lanjut kelas XII-B', 'task', '2026-02-14 08:00:00', '2026-02-16 23:59:00', 'published');
 
 -- ============================================================
--- 9. assignment_questions
+-- 10. assignment_questions
 -- ============================================================
 INSERT INTO assignment_questions (assignment_id, question_text, question_type, points, question_order, answer_key) VALUES
 -- Quiz Aljabar Dasar (assignment_id = 1)
@@ -190,10 +251,23 @@ INSERT INTO assignment_questions (assignment_id, question_text, question_type, p
 
 -- Quiz Vocabulary (assignment_id = 9)
 (9, 'The synonym of "happy" is...', 'multiple_choice', 10, 1, 'Joyful'),
-(9, 'The antonym of "difficult" is...', 'multiple_choice', 10, 2, 'Easy');
+(9, 'The antonym of "difficult" is...', 'multiple_choice', 10, 2, 'Easy'),
+-- One deterministic 100-point question for each current-period assignment
+(10, 'Kerjakan evaluasi utama kelas X-A.', 'essay', 100, 1, 'Rubrik evaluasi X-A'),
+(11, 'Kerjakan latihan tindak lanjut kelas X-A.', 'essay', 100, 1, 'Rubrik latihan X-A'),
+(12, 'Kerjakan evaluasi utama kelas X-B.', 'essay', 100, 1, 'Rubrik evaluasi X-B'),
+(13, 'Kerjakan latihan tindak lanjut kelas X-B.', 'essay', 100, 1, 'Rubrik latihan X-B'),
+(14, 'Kerjakan evaluasi utama kelas XI-A.', 'essay', 100, 1, 'Rubrik evaluasi XI-A'),
+(15, 'Kerjakan latihan tindak lanjut kelas XI-A.', 'essay', 100, 1, 'Rubrik latihan XI-A'),
+(16, 'Kerjakan evaluasi utama kelas XI-B.', 'essay', 100, 1, 'Rubrik evaluasi XI-B'),
+(17, 'Kerjakan latihan tindak lanjut kelas XI-B.', 'essay', 100, 1, 'Rubrik latihan XI-B'),
+(18, 'Kerjakan evaluasi utama kelas XII-A.', 'essay', 100, 1, 'Rubrik evaluasi XII-A'),
+(19, 'Kerjakan latihan tindak lanjut kelas XII-A.', 'essay', 100, 1, 'Rubrik latihan XII-A'),
+(20, 'Kerjakan evaluasi utama kelas XII-B.', 'essay', 100, 1, 'Rubrik evaluasi XII-B'),
+(21, 'Kerjakan latihan tindak lanjut kelas XII-B.', 'essay', 100, 1, 'Rubrik latihan XII-B');
 
 -- ============================================================
--- 10. assignment_submissions (students submit assignments)
+-- 11. assignment_submissions (students submit assignments)
 -- ============================================================
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score) VALUES
 -- Students from X-A (students 1-5) submit Quiz Aljabar
@@ -243,8 +317,192 @@ INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submi
 (9, 19, '2025-08-22 08:00:00', '2025-08-22 08:28:00', 'graded', 18),
 (9, 20, '2025-08-22 08:00:00', '2025-08-22 08:32:00', 'graded', 15);
 
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 10,
+       id,
+       '2026-02-02 08:00:00',
+       datetime('2026-02-02 08:00:00', '+' || id || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 1 THEN 92
+         WHEN 2 THEN 88
+         WHEN 3 THEN 95
+         WHEN 4 THEN 84
+         ELSE 90
+       END
+FROM students
+WHERE class_id = 1;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 11,
+       id,
+       '2026-02-09 08:00:00',
+       datetime('2026-02-09 08:00:00', '+' || (id * 2) || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 1 THEN 86
+         WHEN 2 THEN 89
+         ELSE 91
+       END
+FROM students
+WHERE id BETWEEN 1 AND 3;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 12,
+       id,
+       '2026-02-03 08:00:00',
+       datetime('2026-02-03 08:00:00', '+' || id || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 6 THEN 87
+         WHEN 7 THEN 93
+         WHEN 8 THEN 85
+         WHEN 9 THEN 90
+         ELSE 82
+       END
+FROM students
+WHERE class_id = 2;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 13,
+       id,
+       '2026-02-10 08:00:00',
+       datetime('2026-02-10 08:00:00', '+' || (id - 5) * 3 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 6 THEN 91
+         WHEN 7 THEN 88
+         ELSE 84
+       END
+FROM students
+WHERE id BETWEEN 6 AND 8;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 14,
+       id,
+       '2026-02-04 08:00:00',
+       datetime('2026-02-04 08:00:00', '+' || id || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 11 THEN 94
+         WHEN 12 THEN 90
+         WHEN 13 THEN 88
+         WHEN 14 THEN 92
+         ELSE 86
+       END
+FROM students
+WHERE class_id = 3;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 15,
+       id,
+       '2026-02-11 08:00:00',
+       datetime('2026-02-11 08:00:00', '+' || (id - 10) * 4 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 11 THEN 89
+         WHEN 12 THEN 87
+         ELSE 93
+       END
+FROM students
+WHERE id BETWEEN 11 AND 13;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 16,
+       id,
+       '2026-02-05 08:00:00',
+       CASE
+         WHEN id BETWEEN 16 AND 18 THEN datetime('2026-02-05 08:00:00', '+' || (id - 15) * 5 || ' minutes')
+         ELSE '2026-02-05 09:15:00'
+       END,
+       CASE
+         WHEN id BETWEEN 16 AND 18 THEN 'graded'
+         ELSE 'submitted'
+       END,
+       CASE
+         WHEN id = 16 THEN 88
+         WHEN id = 17 THEN 84
+         WHEN id = 18 THEN 91
+         ELSE NULL
+       END
+FROM students
+WHERE id BETWEEN 16 AND 20;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 17,
+       id,
+       '2026-02-12 08:00:00',
+       datetime('2026-02-12 08:00:00', '+' || (id - 15) * 6 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 16 THEN 90
+         ELSE 85
+       END
+FROM students
+WHERE id BETWEEN 16 AND 17;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 18,
+       id,
+       '2026-02-06 08:00:00',
+       datetime('2026-02-06 08:00:00', '+' || (id - 20) * 4 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 21 THEN 95
+         WHEN 22 THEN 92
+         WHEN 23 THEN 89
+         WHEN 24 THEN 90
+         ELSE 87
+       END
+FROM students
+WHERE class_id = 5;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 19,
+       id,
+       '2026-02-13 08:00:00',
+       datetime('2026-02-13 08:00:00', '+' || (id - 20) * 5 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 21 THEN 88
+         WHEN 22 THEN 86
+         ELSE 90
+       END
+FROM students
+WHERE id BETWEEN 21 AND 23;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 20,
+       id,
+       '2026-02-07 08:00:00',
+       datetime('2026-02-07 08:00:00', '+' || (id - 25) * 4 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 26 THEN 91
+         WHEN 27 THEN 85
+         WHEN 28 THEN 88
+         WHEN 29 THEN 93
+         ELSE 84
+       END
+FROM students
+WHERE class_id = 6;
+
+INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+SELECT 21,
+       id,
+       '2026-02-14 08:00:00',
+       datetime('2026-02-14 08:00:00', '+' || (id - 25) * 5 || ' minutes'),
+       'graded',
+       CASE id
+         WHEN 26 THEN 87
+         WHEN 27 THEN 89
+         ELSE 92
+       END
+FROM students
+WHERE id BETWEEN 26 AND 28;
+
 -- ============================================================
--- 11. submission_answers
+-- 12. submission_answers
 -- ============================================================
 INSERT INTO submission_answers (submission_id, question_id, answer, score, is_correct, graded_at) VALUES
 -- Submission 1 (student 1, Quiz Aljabar)
@@ -279,7 +537,7 @@ INSERT INTO submission_answers (submission_id, question_id, answer, score, is_co
 (29, 14, 'Easy', 8, 1, '2025-08-22 09:00:00');
 
 -- ============================================================
--- 12. materials
+-- 13. materials
 -- ============================================================
 INSERT INTO materials (subject_teacher_assignment_id, title, description, content) VALUES
 (1, 'Materi Aljabar Dasar', 'Pengenalan konsep aljabar untuk kelas X', 'Aljabar adalah cabang matematika yang menggunakan huruf untuk mewakili angka. Konsep dasar meliputi variabel, konstanta, koefisien, dan operasi aljabar.'),
@@ -290,7 +548,7 @@ INSERT INTO materials (subject_teacher_assignment_id, title, description, conten
 (15, 'Vocabulary List - Unit 1', 'Daftar kosakata bahasa Inggris', 'Important vocabulary: environment (lingkungan), sustainable (berkelanjutan), conservation (pelestarian), ecosystem (ekosistem).');
 
 -- ============================================================
--- 13. attitudes (penilaian sikap)
+-- 14. attitudes (penilaian sikap)
 -- ============================================================
 INSERT INTO attitudes (student_id, class_id, academic_period_id, teacher_id, score, description) VALUES
 -- X-A students (teacher_id=2, Arsito)
@@ -333,4 +591,36 @@ INSERT INTO attitudes (student_id, class_id, academic_period_id, teacher_id, sco
 (27, 6, 1, 3, 'A', 'Sangat baik dan aktif'),
 (28, 6, 1, 3, 'B', 'Cukup baik, perlu lebih rajin'),
 (29, 6, 1, 3, 'A', 'Sangat baik dalam kerja sama'),
-(30, 6, 1, 3, 'B', 'Baik, perlu lebih disiplin');
+(30, 6, 1, 3, 'B', 'Baik, perlu lebih disiplin'),
+
+-- Period 2 attitudes for the current academic period
+(1, 1, 2, 2, 'A', 'Konsisten sangat baik pada semester 2'),
+(2, 1, 2, 2, 'B', 'Baik dan stabil pada semester 2'),
+(3, 1, 2, 2, 'A', 'Aktif dan suportif pada semester 2'),
+(4, 1, 2, 2, 'B', 'Perlu menjaga konsistensi kedisiplinan'),
+(5, 1, 2, 2, 'C', 'Perlu pendampingan tambahan pada semester 2'),
+(6, 2, 2, 3, 'A', 'Menunjukkan peningkatan sikap belajar'),
+(7, 2, 2, 3, 'B', 'Baik, perlu lebih tenang saat diskusi'),
+(8, 2, 2, 3, 'A', 'Sangat baik dan kooperatif'),
+(9, 2, 2, 3, 'B', 'Baik, perlu lebih rapi mengumpulkan tugas'),
+(10, 2, 2, 3, 'C', 'Perlu meningkatkan fokus di kelas'),
+(11, 3, 2, 2, 'A', 'Menjadi teladan positif di kelas'),
+(12, 3, 2, 2, 'A', 'Rajin dan disiplin sepanjang semester'),
+(13, 3, 2, 2, 'B', 'Baik, perlu lebih percaya diri'),
+(14, 3, 2, 2, 'A', 'Sangat baik dalam kolaborasi'),
+(15, 3, 2, 2, 'C', 'Perlu memperbaiki konsistensi kehadiran'),
+(16, 4, 2, 3, 'B', 'Baik, perlu lebih aktif bertanya'),
+(17, 4, 2, 3, 'A', 'Sangat baik dan menghargai teman'),
+(18, 4, 2, 3, 'B', 'Baik, perlu lebih teliti'),
+(19, 4, 2, 3, 'C', 'Perlu pembinaan dalam tanggung jawab'),
+(20, 4, 2, 3, 'D', 'Membutuhkan perhatian khusus pada kedisiplinan'),
+(21, 5, 2, 2, 'A', 'Konsisten menjadi panutan'),
+(22, 5, 2, 2, 'A', 'Sangat bertanggung jawab'),
+(23, 5, 2, 2, 'B', 'Baik, perlu lebih fokus'),
+(24, 5, 2, 2, 'A', 'Aktif membantu teman'),
+(25, 5, 2, 2, 'C', 'Perlu menjaga motivasi belajar'),
+(26, 6, 2, 3, 'A', 'Sangat baik dan siap memimpin'),
+(27, 6, 2, 3, 'B', 'Baik, perlu lebih konsisten'),
+(28, 6, 2, 3, 'C', 'Perlu meningkatkan kerapian belajar'),
+(29, 6, 2, 3, 'A', 'Sangat baik dalam kerja sama'),
+(30, 6, 2, 3, 'B', 'Baik, perlu lebih disiplin');

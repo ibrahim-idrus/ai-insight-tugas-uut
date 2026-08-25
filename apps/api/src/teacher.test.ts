@@ -15,7 +15,7 @@ export async function setupTeacherApp() {
   database.run(readFileSync(resolve(import.meta.dirname, "../../../database/migration.sql"), "utf8"));
   database.run(readFileSync(resolve(import.meta.dirname, "../../../database/seed.sql"), "utf8"));
   database.run(`
-    INSERT INTO subject_teacher_assignments
+    INSERT OR IGNORE INTO subject_teacher_assignments
       (teacher_id, class_id, subject_id, academic_period_id)
     VALUES (2, 1, 1, 2)
   `);
@@ -70,7 +70,7 @@ test("lists only the authenticated teacher's teaching contexts", async () => {
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.contexts.length, 11);
+  assert.equal(body.contexts.length, 16);
   assert.ok(body.contexts.every((context: any) => typeof context.id === "number"));
   assert.ok(body.contexts.every((context: any) => typeof context.studentCount === "number"));
   assert.ok(body.contexts.some((context: any) => context.academicPeriod.semester === 2));
@@ -306,7 +306,7 @@ test("lists only the authenticated teacher's assignments with safe context detai
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.assignments.length, 5);
+  assert.equal(body.assignments.length, 17);
   assert.ok(body.assignments.every((assignment: any) => typeof assignment.id === "number"));
   assert.ok(body.assignments.every((assignment: any) => ["quiz", "task", "upload"].includes(assignment.assignmentType)));
   assert.ok(body.assignments.every((assignment: any) => ["draft", "published", "closed"].includes(assignment.status)));
@@ -813,10 +813,10 @@ test("returns a teacher-owned dashboard summary instead of the placeholder respo
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.ok, undefined);
-  assert.ok(body.contexts.length > 0);
-  assert.ok(body.assignments.total > 0);
-  assert.ok(body.submissions.total > 0);
-  assert.ok(body.recentAssignments.some((assignment: any) => assignment.title === "Quiz Aljabar Dasar"));
+  assert.equal(body.contexts.length, 16);
+  assert.deepEqual(body.assignments, { total: 17, draft: 1, published: 0, closed: 16 });
+  assert.deepEqual(body.submissions, { total: 60, inProgress: 0, submitted: 2, graded: 58 });
+  assert.ok(body.recentAssignments.some((assignment: any) => assignment.title === "Latihan Semester XII-B 2"));
   assert.equal(typeof body.performance.averageScore, "number");
 
   const foreignResponse = await app.request("/api/teacher/dashboard", { headers: { Cookie: foreignCookie } });
