@@ -277,3 +277,202 @@ test("validates material IDs and title input", async () => {
   });
   assert.equal(invalidMaterial.status, 400);
 });
+
+function assignmentIdFor(database: Database, contextId: number, title?: string): number {
+  const statement = database.prepare(`
+    SELECT id
+    FROM assignments
+    WHERE subject_teacher_assignment_id = ?
+      ${title ? "AND title = ?" : ""}
+    ORDER BY id
+    LIMIT 1
+  `);
+  statement.bind(title ? [contextId, title] : [contextId]);
+  assert.equal(statement.step(), true);
+  const assignmentId = statement.getAsObject().id;
+  statement.free();
+  return assignmentId as number;
+}
+
+test("lists only the authenticated teacher's assignments with safe context details", async () => {
+  const { app } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+
+  const response = await app.request("/api/teacher/assignments", { headers: { Cookie: cookie } });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.assignments.length, 5);
+  assert.ok(body.assignments.every((assignment: any) => typeof assignment.id === "number"));
+  assert.ok(body.assignments.every((assignment: any) => ["quiz", "task", "upload"].includes(assignment.assignmentType)));
+  assert.ok(body.assignments.every((assignment: any) => ["draft", "published", "closed"].includes(assignment.status)));
+  assert.equal(body.assignments.some((assignment: any) => assignment.title === "Tugas Menulis Esai"), false);
+  assert.deepEqual(body.assignments[0].context, {
+    id: 1,
+    class: { id: 1, name: "X-A", gradeLevel: 10 },
+    subject: { id: 1, name: "Matematika", code: "MTK" },
+    academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+  });
+});
+
+test("requires a teacher session for assignment routes and forbids students", async () => {
+  const { app } = await setupTeacherApp();
+
+  const anonymous = await app.request("/api/teacher/assignments");
+  assert.equal(anonymous.status, 401);
+
+  const { cookie } = await login(app, "ahmad.rizki", "student123");
+  const student = await app.request("/api/teacher/assignments", { headers: { Cookie: cookie } });
+  assert.equal(student.status, 403);
+});
+
+test("reads an owned assignment and hides foreign assignments", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const ownAssignmentId = assignmentIdFor(database, contextIdFor(database, 2, 1, 1, 1), "Quiz Aljabar Dasar");
+  const foreignAssignmentId = assignmentIdFor(database, contextIdFor(database, 3, 1, 2, 1), "Tugas Menulis Esai");
+
+  const own = await app.request(`/api/teacher/assignments/${ownAssignmentId}`, { headers: { Cookie: cookie } });
+  assert.equal(own.status, 200);
+  const body = await own.json();
+  assert.equal(body.title, "Quiz Aljabar Dasar");
+  assert.equal(body.assignmentType, "quiz");
+  assert.equal(body.status, "published");
+  assert.equal(body.context.id, 1);
+
+  const foreign = await app.request(`/api/teacher/assignments/${foreignAssignmentId}`, { headers: { Cookie: cookie } });
+  assert.equal(foreign.status, 404);
+  assert.deepEqual(await foreign.json(), { error: "Assignment not found" });
+});
+
+test("creates, updates, publishes, closes, and deletes an owned assignment", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const contextId = contextIdFor(database, 2, 1, 1, 1);
+
+  const created = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      teacher_id: 3,
+      subjectTeacherAssignmentId: contextId,
+      title: "  New assignment  ",
+      description: "  Read the chapter  ",
+      assignmentType: "task",
+      startAt: "2026-08-25T08:00",
+      dueAt: "2026-09-01T23:59",
+    }),
+  });
+  assert.equal(created.status, 201);
+  const assignment = await created.json();
+  assert.equal(assignment.title, "New assignment");
+  assert.equal(assignment.description, "Read the chapter");
+  assert.equal(assignment.assignmentType, "task");
+  assert.equal(assignment.status, "draft");
+  assert.equal(assignment.context.id, contextId);
+
+  const updated = await app.request(`/api/teacher/assignments/${assignment.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ teacher_id: 3, title: "Updated assignment", description: null, assignmentType: "upload", startAt: null, dueAt: null }),
+  });
+  assert.equal(updated.status, 200);
+  const updatedAssignment = await updated.json();
+  assert.equal(updatedAssignment.title, "Updated assignment");
+  assert.equal(updatedAssignment.assignmentType, "upload");
+  assert.equal(updatedAssignment.status, "draft");
+
+  const published = await app.request(`/api/teacher/assignments/${assignment.id}/publish`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(published.status, 200);
+  assert.equal((await published.json()).status, "published");
+
+  const closed = await app.request(`/api/teacher/assignments/${assignment.id}/close`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(closed.status, 200);
+  assert.equal((await closed.json()).status, "closed");
+
+  const deleted = await app.request(`/api/teacher/assignments/${assignment.id}`, {
+    method: "DELETE",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(deleted.status, 204);
+
+  const missing = await app.request(`/api/teacher/assignments/${assignment.id}`, { headers: { Cookie: cookie } });
+  assert.equal(missing.status, 404);
+});
+
+test("validates assignment input, context ownership, IDs, and transitions", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const ownContextId = contextIdFor(database, 2, 1, 1, 1);
+  const foreignContextId = contextIdFor(database, 3, 1, 2, 1);
+
+  for (const input of [
+    {},
+    { subjectTeacherAssignmentId: ownContextId, title: "  ", assignmentType: "task" },
+    { subjectTeacherAssignmentId: ownContextId, title: "Task", assignmentType: "essay" },
+    { subjectTeacherAssignmentId: ownContextId, title: "Task", assignmentType: "task", startAt: 123 },
+  ]) {
+    const response = await app.request("/api/teacher/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400);
+  }
+
+  const foreignContext = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ subjectTeacherAssignmentId: foreignContextId, title: "Intrusion", assignmentType: "task" }),
+  });
+  assert.equal(foreignContext.status, 404);
+
+  for (const path of ["nope", "0", "-1", "1e0"]) {
+    const response = await app.request(`/api/teacher/assignments/${path}`, { headers: { Cookie: cookie } });
+    assert.equal(response.status, 400);
+  }
+
+  const draft = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ subjectTeacherAssignmentId: ownContextId, title: "Transition task", assignmentType: "task" }),
+  });
+  const draftAssignment = await draft.json();
+  const closedBeforePublish = await app.request(`/api/teacher/assignments/${draftAssignment.id}/close`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(closedBeforePublish.status, 409);
+
+  await app.request(`/api/teacher/assignments/${draftAssignment.id}/publish`, { method: "POST", headers: { Cookie: cookie } });
+  const publishedAgain = await app.request(`/api/teacher/assignments/${draftAssignment.id}/publish`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(publishedAgain.status, 409);
+});
+
+test("does not allow a teacher to mutate another teacher's assignment", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const foreignAssignmentId = assignmentIdFor(database, contextIdFor(database, 3, 1, 2, 1), "Tugas Menulis Esai");
+
+  for (const request of [
+    app.request(`/api/teacher/assignments/${foreignAssignmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ title: "Intrusion", assignmentType: "task" }),
+    }),
+    app.request(`/api/teacher/assignments/${foreignAssignmentId}`, { method: "DELETE", headers: { Cookie: cookie } }),
+    app.request(`/api/teacher/assignments/${foreignAssignmentId}/publish`, { method: "POST", headers: { Cookie: cookie } }),
+    app.request(`/api/teacher/assignments/${foreignAssignmentId}/close`, { method: "POST", headers: { Cookie: cookie } }),
+  ]) {
+    assert.equal((await request).status, 404);
+  }
+});
