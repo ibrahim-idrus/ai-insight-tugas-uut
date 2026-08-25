@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(npx tsc --noEmit 2 >& 1)",
+      "Shell(cd /home/baim-acer/Documents/Folder_Belajar_Tech/ai-insight-tugas-uut-student-side/apps/web && npx tsc --noEmit 2>&1; cd /home/baim-acer/Documents/Folder_Belajar_Tech/ai-insight-tugas-uut-student-side/apps/api && npx tsc --noEmit 2>&1)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

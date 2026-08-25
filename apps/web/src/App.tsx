@@ -12,6 +12,15 @@ import {
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { dashboardForRole, guardDestination } from "./auth/routing";
 import type { Role } from "./auth/types";
+import DashboardPage from "./student/DashboardPage";
+import ProfilePage from "./student/ProfilePage";
+import MaterialsPage from "./student/MaterialsPage";
+import MaterialDetailPage from "./student/MaterialDetailPage";
+import AssignmentsPage from "./student/AssignmentsPage";
+import AssignmentDetailPage from "./student/AssignmentDetailPage";
+import QuizPage from "./student/QuizPage";
+import UploadPage from "./student/UploadPage";
+import AssignmentResultPage from "./student/AssignmentResultPage";
 
 interface NavigationItem {
   label: string;
@@ -35,9 +44,8 @@ const NAVIGATION: Record<Role, NavigationItem[]> = {
   ],
   student: [
     { label: "Dashboard", path: "/student/dashboard", glyph: "▦" },
-    { label: "Classes", path: "/student/classes", glyph: "◇" },
+    { label: "Materials", path: "/student/materials", glyph: "◇" },
     { label: "Assignments", path: "/student/assignments", glyph: "▤" },
-    { label: "Grades", path: "/student/grades", glyph: "✦" },
   ],
 };
 
@@ -81,6 +89,7 @@ export function ProtectedRoute({ role }: { role: Role }) {
 function RoleLayout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!user) return null;
 
@@ -89,9 +98,26 @@ function RoleLayout({ role }: { role: Role }) {
     navigate("/login", { replace: true });
   }
 
+  function handleNavClick() {
+    setSidebarOpen(false);
+  }
+
   return (
     <div className={`portal-shell portal-shell-${role}`}>
-      <aside className="sidebar">
+      {role === "student" && (
+        <button
+          className="hamburger-btn"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          type="button"
+          aria-label="Toggle navigation"
+        >
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+        </button>
+      )}
+
+      <aside className={`sidebar ${role === "student" && sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand-lockup">
           <div className="brand-emblem">K12</div>
           <div>
@@ -113,6 +139,7 @@ function RoleLayout({ role }: { role: Role }) {
               className={({ isActive }) => (isActive ? "nav-item nav-item-active" : "nav-item")}
               key={item.path}
               to={item.path}
+              onClick={handleNavClick}
             >
               <span className="nav-glyph" aria-hidden="true">
                 {item.glyph}
@@ -144,6 +171,15 @@ function RoleLayout({ role }: { role: Role }) {
             <strong>{ROLE_LABELS[role]}</strong>
           </div>
           <div className="topbar-user">
+            {role === "student" && (
+              <button
+                className="topbar-profile-btn"
+                onClick={() => navigate("/student/profile")}
+                type="button"
+              >
+                Profile
+              </button>
+            )}
             <span className="avatar">{initials(user.name)}</span>
             <span>{user.name}</span>
           </div>
@@ -317,10 +353,15 @@ function AppRoutes() {
       <Route element={<ProtectedRoute role="student" />} path="/student">
         <Route element={<RoleLayout role="student" />}>
           <Route element={<Navigate replace to="dashboard" />} index />
-          <Route element={<PlaceholderPage description="Your protected student workspace is active." title="Dashboard" />} path="dashboard" />
-          <Route element={<PlaceholderPage description="Class tools will be added in a later LMS slice." title="Classes" />} path="classes" />
-          <Route element={<PlaceholderPage description="Assignment tools will be added in a later LMS slice." title="Assignments" />} path="assignments" />
-          <Route element={<PlaceholderPage description="Grade tools will be added in a later LMS slice." title="Grades" />} path="grades" />
+          <Route element={<DashboardPage />} path="dashboard" />
+          <Route element={<ProfilePage />} path="profile" />
+          <Route element={<MaterialsPage />} path="materials" />
+          <Route element={<MaterialDetailPage />} path="materials/:id" />
+          <Route element={<AssignmentsPage />} path="assignments" />
+          <Route element={<AssignmentDetailPage />} path="assignments/:id" />
+          <Route element={<QuizPage />} path="assignments/:id/quiz" />
+          <Route element={<UploadPage />} path="assignments/:id/upload" />
+          <Route element={<AssignmentResultPage />} path="assignments/:id/result" />
         </Route>
       </Route>
 

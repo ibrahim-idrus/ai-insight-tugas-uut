@@ -7,6 +7,7 @@ import { logger } from "hono/logger";
 import initSqlJs, { Database } from "sql.js";
 import { requireAuth, requireRole, type AuthEnv } from "./auth/middleware.js";
 import { authenticateUser } from "./auth/service.js";
+import { createStudentRoutes } from "./student/routes.js";
 import {
   MemorySessionStore,
   SESSION_COOKIE,
@@ -128,9 +129,9 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
     return context.json({ ok: true, role: "headmaster" });
   });
-  app.get("/api/student/dashboard", requireRole(database, sessions, "student"), (context) => {
-    return context.json({ ok: true, role: "student" });
-  });
+
+  const studentRoutes = createStudentRoutes(database, sessions);
+  app.route("/api/student", studentRoutes);
 
   return app;
 }
