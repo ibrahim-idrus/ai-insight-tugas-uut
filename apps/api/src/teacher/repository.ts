@@ -1,4 +1,5 @@
 import type { Database } from "sql.js";
+import { listTeacherAssignmentsForContext } from "./assignment-repository.js";
 import type {
   TeacherContextDetails,
   TeacherContextSummary,
@@ -134,8 +135,9 @@ export function findTeacherContext(
     createdAt: String(material.createdAt),
     updatedAt: String(material.updatedAt),
   }));
+  const assignments = listTeacherAssignmentsForContext(database, teacherId, context.id);
 
-  return { ...context, students, materials };
+  return { ...context, students, materials, assignments };
 }
 
 interface MaterialRow {

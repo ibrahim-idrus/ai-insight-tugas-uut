@@ -15,6 +15,7 @@ import {
   SESSION_TTL_SECONDS,
   type SessionStore,
 } from "./auth/session-store.js";
+import { registerTeacherAssignmentRoutes } from "./teacher/assignment-routes.js";
 
 const DB_PATH = join(import.meta.dirname, "../../../database/lms.db");
 
@@ -132,6 +133,7 @@ export function createApp(
     return context.json({ ok: true, role: "teacher" });
   });
   registerTeacherRoutes(app, database, sessions, persist);
+  registerTeacherAssignmentRoutes(app, database, sessions, persist);
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
     const periodId = context.req.query("academic_period_id");
 

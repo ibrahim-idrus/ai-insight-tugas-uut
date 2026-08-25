@@ -25,6 +25,8 @@ import AssignmentDetailPage from "./student/AssignmentDetailPage";
 import QuizPage from "./student/QuizPage";
 import UploadPage from "./student/UploadPage";
 import AssignmentResultPage from "./student/AssignmentResultPage";
+import { TeacherAssignmentsPage } from "./teacher/pages/TeacherAssignmentsPage";
+import { TeacherAssignmentPage } from "./teacher/pages/TeacherAssignmentPage";
 
 interface NavigationItem {
   label: string;
@@ -328,7 +330,7 @@ function RootRedirect() {
   return <Navigate to={user ? dashboardForRole(user.role) : "/login"} replace />;
 }
 
-function AppRoutes() {
+export function AppRoutes() {
   return (
     <Routes>
       <Route element={<LoginPage />} path="/login" />
@@ -342,7 +344,10 @@ function AppRoutes() {
           <Route element={<TeacherMaterialPage mode="create" />} path="classes/:contextId/materials/new" />
           <Route element={<TeacherMaterialPage mode="edit" />} path="classes/:contextId/materials/:materialId/edit" />
           <Route element={<TeacherMaterialPage mode="view" />} path="classes/:contextId/materials/:materialId" />
-          <Route element={<PlaceholderPage description="Assignment tools will be added in a later LMS slice." title="Assignments" />} path="assignments" />
+          <Route element={<TeacherAssignmentsPage />} path="assignments" />
+          <Route element={<TeacherAssignmentPage mode="create" />} path="assignments/new" />
+          <Route element={<TeacherAssignmentPage mode="edit" />} path="assignments/:assignmentId/edit" />
+          <Route element={<TeacherAssignmentPage mode="view" />} path="assignments/:assignmentId" />
           <Route element={<PlaceholderPage description="Grade tools will be added in a later LMS slice." title="Grades" />} path="grades" />
         </Route>
       </Route>

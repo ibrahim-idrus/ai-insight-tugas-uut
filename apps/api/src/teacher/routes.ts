@@ -2,6 +2,7 @@ import type { Context, Hono } from "hono";
 import type { Database } from "sql.js";
 import { requireRole, type AuthEnv } from "../auth/middleware.js";
 import type { SessionStore } from "../auth/session-store.js";
+import { closeExpiredAssignments } from "./assignment-repository.js";
 import {
   createTeacherMaterial,
   deleteTeacherMaterial,
@@ -58,6 +59,8 @@ export function registerTeacherRoutes(
     if (!/^\d+$/.test(contextId) || Number(contextId) <= 0) {
       return context.json({ error: "Invalid teaching context ID" }, 400);
     }
+
+    if (closeExpiredAssignments(database) > 0) persist();
 
     const teachingContext = findTeacherContext(
       database,
