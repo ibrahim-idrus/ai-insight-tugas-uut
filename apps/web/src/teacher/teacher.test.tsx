@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { TeacherClassesPage } from "./pages/TeacherClassesPage";
 import { TeacherContextPage } from "./pages/TeacherContextPage";
 
@@ -146,6 +146,63 @@ test("Context page shows a Classes link when its context is not found", async ()
     const output = renderedText(renderer);
     assert.match(output, /Class context not found/);
     assert.match(output, /Classes/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Context page clears stale details while another context is loading", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    if (String(input) === "/api/teacher/classes/1") {
+      return new Response(
+        JSON.stringify({
+          id: 1,
+          class: { id: 1, name: "X-A", gradeLevel: 10 },
+          subject: { id: 1, name: "Matematika", code: "MTK" },
+          academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+          studentCount: 1,
+          materialCount: 0,
+          students: [{ id: 10, name: "Ayu Lestari", nis: "1001" }],
+          materials: [],
+        }),
+        { status: 200 }
+      );
+    }
+
+    assert.equal(String(input), "/api/teacher/classes/2");
+    return new Promise<Response>(() => {});
+  }) as typeof fetch;
+
+  function ContextRoute() {
+    const navigate = useNavigate();
+    return (
+      <>
+        <button onClick={() => navigate("/teacher/classes/2")} type="button">Load second class</button>
+        <TeacherContextPage />
+      </>
+    );
+  }
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1"]}>
+          <Routes>
+            <Route element={<ContextRoute />} path="/teacher/classes/:contextId" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    await act(async () => {
+      renderer.root.findByType("button").props.onClick();
+    });
+
+    const output = renderedText(renderer);
+    assert.doesNotMatch(output, /Ayu Lestari/);
+    assert.match(output, /Loading class details/);
   } finally {
     globalThis.fetch = originalFetch;
   }

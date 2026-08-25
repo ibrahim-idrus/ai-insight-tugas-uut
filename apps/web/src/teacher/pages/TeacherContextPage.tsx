@@ -13,6 +13,9 @@ export function TeacherContextPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setContext(null);
+    setError("");
+
     const id = Number(contextId);
     if (!Number.isInteger(id) || id <= 0) {
       setError("Class context not found");
