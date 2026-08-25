@@ -8,6 +8,11 @@ import { TeacherMaterialPage } from "./pages/TeacherMaterialPage";
 import { deleteTeacherMaterial, updateTeacherMaterial } from "./api";
 import { TeacherAssignmentsPage } from "./pages/TeacherAssignmentsPage";
 import { TeacherAssignmentPage } from "./pages/TeacherAssignmentPage";
+import { TeacherDashboardPage } from "./pages/TeacherDashboardPage";
+import { TeacherGradesPage } from "./pages/TeacherGradesPage";
+import { TeacherHomeroomDetailPage, TeacherHomeroomPage } from "./pages/TeacherHomeroomPage";
+import { TeacherQuizPage } from "./pages/TeacherQuizPage";
+import { TeacherResultsPage } from "./pages/TeacherResultsPage";
 import { AppRoutes } from "../App";
 import { AuthProvider } from "../auth/AuthContext";
 
@@ -1017,6 +1022,158 @@ test("Assignment edit preserves schedule seconds and timezone offsets", async ()
       startAt: preciseAssignment.startAt,
       dueAt: preciseAssignment.dueAt,
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Teacher dashboard renders owned context, assignment, submission, and performance summaries", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/dashboard");
+    return new Response(JSON.stringify({
+      contexts: [assignmentContext],
+      assignments: { total: 5, draft: 1, published: 3, closed: 1 },
+      submissions: { total: 8, inProgress: 1, submitted: 2, graded: 5 },
+      recentAssignments: [{ id: 8, title: "Quiz Aljabar Dasar", assignmentType: "quiz", status: "published", className: "X-A", subjectName: "Matematika", dueAt: null }],
+      performance: { averageScore: 84.2, gradedSubmissionCount: 5 },
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter><TeacherDashboardPage /></MemoryRouter>);
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Teacher dashboard", "X-A", "Assignments", "5", "Submissions", "8", "84.2%", "Quiz Aljabar Dasar"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Quiz builder renders questions and dynamic total points", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/assignments/8/quiz");
+    return new Response(JSON.stringify({
+      assignment: assignmentFixture,
+      questions: [
+        { id: 1, questionText: "Hasil dari 2x + 3x adalah...", questionType: "multiple_choice", points: 10, questionOrder: 1, answerKey: "5x" },
+        { id: 2, questionText: "Jika x = 5, maka nilainya?", questionType: "short_answer", points: 15, questionOrder: 2, answerKey: "8" },
+      ],
+      totalPoints: 25,
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8/quiz"]}>
+          <Routes><Route element={<TeacherQuizPage />} path="/teacher/assignments/:assignmentId/quiz" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Quiz builder", "Hasil dari 2x \\+ 3x adalah", "Jika x = 5, maka nilainya?", "Total points: 25", "Add question"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Assignment results renders submitted, graded, and not-started roster rows", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/assignments/8/results");
+    return new Response(JSON.stringify({
+      assignment: assignmentFixture,
+      totalPoints: 60,
+      students: [
+        { id: 1, name: "Ahmad Rizki", nis: "2025001", status: "graded", submittedAt: "2026-08-01 08:45:00", startedAt: "2026-08-01 08:00:00", score: 45, submissionId: 1 },
+        { id: 2, name: "Budi Santoso", nis: "2025002", status: "not_started", submittedAt: null, startedAt: null, score: null, submissionId: null },
+      ],
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/assignments/8/results"]}>
+          <Routes><Route element={<TeacherResultsPage />} path="/teacher/assignments/:assignmentId/results" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Assignment results", "Ahmad Rizki", "Graded", "45 / 60", "Budi Santoso", "Not started"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Teacher grades renders filter controls and average rows", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/grades");
+    return new Response(JSON.stringify({
+      contexts: [assignmentContext],
+      grades: [{ studentId: 1, studentName: "Ahmad Rizki", nis: "2025001", classId: 1, className: "X-A", averageScore: 84.1666, assignmentCount: 2, submittedCount: 2, gradedCount: 2, assignmentTitles: ["Quiz Aljabar Dasar", "Tugas Rumah"] }],
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter><TeacherGradesPage /></MemoryRouter>);
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Teacher grades", "Search students", "Class / subject", "Ahmad Rizki", "84.2%", "2 graded"]) {
+      assert.match(output, new RegExp(value));
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Homeroom pages render owned classes and attitude controls", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    const path = String(input);
+    if (path === "/api/teacher/homeroom") {
+      return new Response(JSON.stringify({ homerooms: [{ id: 1, class: { id: 1, name: "X-A", gradeLevel: 10 }, academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 }, studentCount: 5, scoredCount: 5 }] }), { status: 200 });
+    }
+    assert.equal(path, "/api/teacher/homeroom/1");
+    return new Response(JSON.stringify({
+      homeroom: { id: 1, class: { id: 1, name: "X-A", gradeLevel: 10 }, academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 }, studentCount: 1, scoredCount: 1 },
+      students: [{ id: 1, name: "Ahmad Rizki", nis: "2025001", attitude: { id: 1, studentId: 1, classId: 1, academicPeriodId: 1, teacherId: 2, score: "A", description: "Sangat baik", createdAt: "2026-08-01", updatedAt: "2026-08-01" } }],
+    }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter><TeacherHomeroomPage /></MemoryRouter>);
+    });
+    assert.match(renderedText(renderer), /X-A/);
+
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/homeroom/1"]}>
+          <Routes><Route element={<TeacherHomeroomDetailPage />} path="/teacher/homeroom/:homeroomId" /></Routes>
+        </MemoryRouter>
+      );
+    });
+    const output = renderedText(renderer);
+    for (const value of ["Homeroom", "Ahmad Rizki", "Sangat baik", "Save attitude"]) {
+      assert.match(output, new RegExp(value));
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }

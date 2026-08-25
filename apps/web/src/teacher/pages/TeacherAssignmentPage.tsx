@@ -232,6 +232,8 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
             <dl className="assignment-meta-grid"><div><dt>Teaching context</dt><dd>{contextLabel(assignment.context)}</dd></div><div><dt>Starts</dt><dd>{assignment.startAt || "Not scheduled"}</dd></div><div><dt>Due</dt><dd>{assignment.dueAt || "No due date"}</dd></div></dl>
             <div className="assignment-actions">
               <Link className="primary-button" to={`/teacher/assignments/${assignment.id}/edit`}>Edit assignment</Link>
+              {assignment.assignmentType === "quiz" ? <Link className="role-pill" to={`/teacher/assignments/${assignment.id}/quiz`}>Quiz builder</Link> : null}
+              <Link className="role-pill" to={`/teacher/assignments/${assignment.id}/results`}>View results</Link>
               {assignment.status === "draft" ? <button disabled={isSubmitting} onClick={() => void handleTransition("published")} type="button">{isSubmitting ? "Publishing…" : "Publish assignment"}</button> : null}
               {assignment.status === "published" ? <button disabled={isSubmitting} onClick={() => void handleTransition("closed")} type="button">{isSubmitting ? "Closing…" : "Close assignment"}</button> : null}
               <button className="danger-button" disabled={isSubmitting} onClick={() => void handleDelete()} type="button">Delete assignment</button>

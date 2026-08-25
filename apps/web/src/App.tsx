@@ -27,6 +27,11 @@ import UploadPage from "./student/UploadPage";
 import AssignmentResultPage from "./student/AssignmentResultPage";
 import { TeacherAssignmentsPage } from "./teacher/pages/TeacherAssignmentsPage";
 import { TeacherAssignmentPage } from "./teacher/pages/TeacherAssignmentPage";
+import { TeacherDashboardPage } from "./teacher/pages/TeacherDashboardPage";
+import { TeacherGradesPage } from "./teacher/pages/TeacherGradesPage";
+import { TeacherHomeroomDetailPage, TeacherHomeroomPage } from "./teacher/pages/TeacherHomeroomPage";
+import { TeacherQuizPage } from "./teacher/pages/TeacherQuizPage";
+import { TeacherResultsPage } from "./teacher/pages/TeacherResultsPage";
 
 interface NavigationItem {
   label: string;
@@ -40,6 +45,7 @@ const NAVIGATION: Record<Role, NavigationItem[]> = {
     { label: "Classes", path: "/teacher/classes", glyph: "◇" },
     { label: "Assignments", path: "/teacher/assignments", glyph: "▤" },
     { label: "Grades", path: "/teacher/grades", glyph: "✦" },
+    { label: "Homeroom", path: "/teacher/homeroom", glyph: "◎" },
   ],
   headmaster: [
     { label: "Dashboard", path: "/headmaster/dashboard", glyph: "▦" },
@@ -338,7 +344,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute role="teacher" />} path="/teacher">
         <Route element={<RoleLayout role="teacher" />}>
           <Route element={<Navigate replace to="dashboard" />} index />
-          <Route element={<PlaceholderPage description="Your protected teacher workspace is active." title="Dashboard" />} path="dashboard" />
+          <Route element={<TeacherDashboardPage />} path="dashboard" />
           <Route element={<TeacherClassesPage />} path="classes" />
           <Route element={<TeacherContextPage />} path="classes/:contextId" />
           <Route element={<TeacherMaterialPage mode="create" />} path="classes/:contextId/materials/new" />
@@ -347,8 +353,12 @@ export function AppRoutes() {
           <Route element={<TeacherAssignmentsPage />} path="assignments" />
           <Route element={<TeacherAssignmentPage mode="create" />} path="assignments/new" />
           <Route element={<TeacherAssignmentPage mode="edit" />} path="assignments/:assignmentId/edit" />
+          <Route element={<TeacherQuizPage />} path="assignments/:assignmentId/quiz" />
+          <Route element={<TeacherResultsPage />} path="assignments/:assignmentId/results" />
           <Route element={<TeacherAssignmentPage mode="view" />} path="assignments/:assignmentId" />
-          <Route element={<PlaceholderPage description="Grade tools will be added in a later LMS slice." title="Grades" />} path="grades" />
+          <Route element={<TeacherGradesPage />} path="grades" />
+          <Route element={<TeacherHomeroomPage />} path="homeroom" />
+          <Route element={<TeacherHomeroomDetailPage />} path="homeroom/:homeroomId" />
         </Route>
       </Route>
 

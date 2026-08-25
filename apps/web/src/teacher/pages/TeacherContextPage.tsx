@@ -162,6 +162,8 @@ export function TeacherContextPage() {
                       <td data-label="Actions">
                         <Link to={`/teacher/assignments/${assignment.id}`}>View assignment</Link>{" "}
                         <Link to={`/teacher/assignments/${assignment.id}/edit`}>Edit</Link>
+                        {assignment.assignmentType === "quiz" ? <>{" "}<Link to={`/teacher/assignments/${assignment.id}/quiz`}>Quiz</Link></> : null}
+                        {" "}<Link to={`/teacher/assignments/${assignment.id}/results`}>Results</Link>
                       </td>
                     </tr>
                   ))}
