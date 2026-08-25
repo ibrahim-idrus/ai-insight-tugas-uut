@@ -677,6 +677,13 @@ test("builds an owned quiz with question CRUD, reorder, and dynamic total points
   });
   assert.equal(foreign.status, 404);
 
+  const foreignReorder = await app.request(`/api/teacher/assignments/${quizId}/quiz/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: foreignCookie },
+    body: JSON.stringify({ questionIds: [question.id, 1, 2, 3, 4, 5] }),
+  });
+  assert.equal(foreignReorder.status, 404);
+
   const deleted = await app.request(`/api/teacher/assignments/${quizId}/quiz/questions/${question.id}`, {
     method: "DELETE",
     headers: { Cookie: ownerCookie },

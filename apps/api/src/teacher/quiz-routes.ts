@@ -139,6 +139,9 @@ export function registerTeacherQuizRoutes(
     const assignmentId = parseId(context.req.param("assignmentId"));
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
+    const quiz = findTeacherQuiz(database, context.get("authUser").id, assignmentId);
+    if (!quiz) return quizNotFound(context);
+
     let raw: unknown;
     try {
       raw = await context.req.json();
@@ -155,14 +158,14 @@ export function registerTeacherQuizRoutes(
       return context.json({ error: "Question order is invalid" }, 400);
     }
 
-    const quiz = reorderTeacherQuizQuestions(
+    const reordered = reorderTeacherQuizQuestions(
       database,
       context.get("authUser").id,
       assignmentId,
       questionIds as number[]
     );
-    if (!quiz) return context.json({ error: "Question order is invalid or quiz not found" }, 400);
+    if (!reordered) return context.json({ error: "Question order is invalid" }, 400);
     persist();
-    return context.json(quiz);
+    return context.json(reordered);
   });
 }
