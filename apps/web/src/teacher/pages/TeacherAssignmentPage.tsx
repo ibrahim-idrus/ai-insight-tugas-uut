@@ -18,6 +18,11 @@ type AssignmentPageMode = "create" | "view" | "edit";
 
 interface TeacherAssignmentPageProps { mode: AssignmentPageMode; }
 
+interface OriginalSchedule {
+  startAt: string | null;
+  dueAt: string | null;
+}
+
 const emptyForm: AssignmentFormInput = {
   subjectTeacherAssignmentId: null,
   title: "",
@@ -30,8 +35,45 @@ const emptyForm: AssignmentFormInput = {
 const typeLabels: Record<AssignmentType, string> = { quiz: "Quiz", task: "Regular task", upload: "Upload / evidence task" };
 const statusLabels: Record<AssignmentStatus, string> = { draft: "Draft", published: "Published", closed: "Closed" };
 
-function inputDate(value: string | null): string {
-  return value ?? "";
+function padDatePart(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function toDateTimeLocalValue(value: string | null): string {
+  if (!value) return "";
+  const normalized = value.trim();
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/.test(normalized)) {
+    const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(normalized);
+    return match ? `${match[1]}T${match[2]}` : "";
+  }
+
+  const date = new Date(normalized.replace(" ", "T"));
+  if (!Number.isFinite(date.getTime())) return "";
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function serializeDateTimeLocal(value: string, originalValue?: string | null): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+  if (originalValue && toDateTimeLocalValue(originalValue) === normalized) return originalValue;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(normalized);
+  if (!match) return normalized;
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    0,
+    0
+  );
+  if (!Number.isFinite(date.getTime())) return normalized;
+
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteOffset = Math.abs(offsetMinutes);
+  return `${normalized}:00${sign}${padDatePart(Math.floor(absoluteOffset / 60))}:${padDatePart(absoluteOffset % 60)}`;
 }
 
 function formFromAssignment(assignment: TeacherAssignment): AssignmentFormInput {
@@ -40,8 +82,8 @@ function formFromAssignment(assignment: TeacherAssignment): AssignmentFormInput 
     title: assignment.title,
     description: assignment.description ?? "",
     assignmentType: assignment.assignmentType,
-    startAt: inputDate(assignment.startAt),
-    dueAt: inputDate(assignment.dueAt),
+    startAt: toDateTimeLocalValue(assignment.startAt),
+    dueAt: toDateTimeLocalValue(assignment.dueAt),
   };
 }
 
@@ -56,6 +98,7 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
   const [assignment, setAssignment] = useState<TeacherAssignment | null>(null);
   const [contexts, setContexts] = useState<TeacherAssignmentContext[] | null>(mode === "view" ? [] : null);
   const [form, setForm] = useState<AssignmentFormInput>(emptyForm);
+  const [originalSchedule, setOriginalSchedule] = useState<OriginalSchedule | null>(null);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +107,7 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
     setAssignment(null);
     setContexts(mode === "view" ? [] : null);
     setForm(emptyForm);
+    setOriginalSchedule(null);
     setError("");
     setLoadError("");
 
@@ -90,6 +134,7 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
           const loadedAssignment = await getTeacherAssignment(assignmentNumber!);
           if (!active) return;
           setAssignment(loadedAssignment);
+          setOriginalSchedule({ startAt: loadedAssignment.startAt, dueAt: loadedAssignment.dueAt });
           setForm(formFromAssignment(loadedAssignment));
         }
       } catch (requestError) {
@@ -116,6 +161,8 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
       startAt: form.startAt.trim(),
       dueAt: form.dueAt.trim(),
     };
+    input.startAt = serializeDateTimeLocal(input.startAt, originalSchedule?.startAt);
+    input.dueAt = serializeDateTimeLocal(input.dueAt, originalSchedule?.dueAt);
     setIsSubmitting(true);
     try {
       const saved = mode === "create"
@@ -219,9 +266,9 @@ export function TeacherAssignmentPage({ mode }: TeacherAssignmentPageProps) {
             <option value="quiz">Quiz</option><option value="task">Regular task</option><option value="upload">Upload / evidence task</option>
           </select>
           <label htmlFor="assignment-start-at">Start</label>
-          <input className="assignment-datetime" id="assignment-start-at" onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))} placeholder="YYYY-MM-DDTHH:MM" type="text" value={form.startAt} />
+          <input className="assignment-datetime" id="assignment-start-at" onChange={(event) => setForm((current) => ({ ...current, startAt: event.target.value }))} step="60" type="datetime-local" value={form.startAt} />
           <label htmlFor="assignment-due-at">Due</label>
-          <input className="assignment-datetime" id="assignment-due-at" onChange={(event) => setForm((current) => ({ ...current, dueAt: event.target.value }))} placeholder="YYYY-MM-DDTHH:MM" type="text" value={form.dueAt} />
+          <input className="assignment-datetime" id="assignment-due-at" onChange={(event) => setForm((current) => ({ ...current, dueAt: event.target.value }))} step="60" type="datetime-local" value={form.dueAt} />
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button className="primary-button" disabled={isSubmitting} type="submit">{isSubmitting ? "Saving assignment…" : "Save assignment"}</button>
           {mode === "edit" ? <button className="danger-button" disabled={isSubmitting} onClick={() => void handleDelete()} type="button">Delete assignment</button> : null}

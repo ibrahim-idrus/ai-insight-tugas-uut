@@ -3,8 +3,10 @@ import type { Database } from "sql.js";
 import { requireRole, type AuthEnv } from "../auth/middleware.js";
 import type { SessionStore } from "../auth/session-store.js";
 import {
+  closeExpiredAssignments,
   createTeacherAssignment,
   deleteTeacherAssignment,
+  ensureAssignmentSubmissionDeadlineGuard,
   findTeacherAssignment,
   listTeacherAssignments,
   transitionTeacherAssignment,
@@ -101,6 +103,10 @@ function assignmentNotFound(context: Context<AuthEnv>) {
   return context.json({ error: "Assignment not found" }, 404);
 }
 
+function synchronizeExpiredAssignments(database: Database, persist: () => void): void {
+  if (closeExpiredAssignments(database) > 0) persist();
+}
+
 function assignmentWithStatus(
   database: Database,
   teacherId: number,
@@ -117,13 +123,16 @@ export function registerTeacherAssignmentRoutes(
   sessions: SessionStore,
   persist: () => void
 ): void {
+  ensureAssignmentSubmissionDeadlineGuard(database);
   const teacher = requireRole(database, sessions, "teacher");
 
   app.get("/api/teacher/assignments", teacher, (context) => {
+    synchronizeExpiredAssignments(database, persist);
     return context.json({ assignments: listTeacherAssignments(database, context.get("authUser").id) });
   });
 
   app.post("/api/teacher/assignments", teacher, async (context) => {
+    synchronizeExpiredAssignments(database, persist);
     const parsed = await parseAssignmentInput(context);
     if ("error" in parsed) return context.json({ error: parsed.error }, 400);
 
@@ -135,6 +144,7 @@ export function registerTeacherAssignmentRoutes(
   });
 
   app.get("/api/teacher/assignments/:assignmentId", teacher, (context) => {
+    synchronizeExpiredAssignments(database, persist);
     const assignmentId = parseId(context.req.param("assignmentId"));
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
@@ -143,6 +153,7 @@ export function registerTeacherAssignmentRoutes(
   });
 
   app.patch("/api/teacher/assignments/:assignmentId", teacher, async (context) => {
+    synchronizeExpiredAssignments(database, persist);
     const assignmentId = parseId(context.req.param("assignmentId"));
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
@@ -167,6 +178,7 @@ export function registerTeacherAssignmentRoutes(
   });
 
   app.delete("/api/teacher/assignments/:assignmentId", teacher, (context) => {
+    synchronizeExpiredAssignments(database, persist);
     const assignmentId = parseId(context.req.param("assignmentId"));
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
@@ -196,6 +208,7 @@ function transitionAssignment(
   status: "published" | "closed",
   previousStatus: "draft" | "published"
 ) {
+  synchronizeExpiredAssignments(database, persist);
   const assignmentId = parseId(context.req.param("assignmentId"));
   if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
@@ -204,6 +217,14 @@ function transitionAssignment(
 
   const assignment = assignmentWithStatus(database, context.get("authUser").id, assignmentId, status, previousStatus);
   if (!assignment) return context.json({ error: `Assignment cannot be ${status}` }, 409);
+
+  if (status === "published") {
+    const closed = closeExpiredAssignments(database);
+    if (closed > 0) {
+      persist();
+      return context.json(findTeacherAssignment(database, context.get("authUser").id, assignmentId) ?? assignment);
+    }
+  }
 
   persist();
   return context.json(assignment);

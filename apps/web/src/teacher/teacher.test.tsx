@@ -15,6 +15,12 @@ function renderedText(renderer: ReactTestRenderer): string {
   return JSON.stringify(renderer.toJSON());
 }
 
+function localDateTimeValue(value: string): string {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function breadcrumbLinks(renderer: ReactTestRenderer): Array<{ href: string; label: string }> {
   return renderer.root
     .findByProps({ "aria-label": "Breadcrumb" })
@@ -805,20 +811,29 @@ test("Assignment create loads owned contexts, sends allowed fields, and navigate
     });
 
     assert.equal(renderer.root.findByProps({ id: "assignment-context" }).props.value, "1");
+    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.type, "datetime-local");
+    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.step, "60");
+    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.type, "datetime-local");
+    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.step, "60");
     await act(async () => {
       renderer.root.findByProps({ id: "assignment-title" }).props.onChange({ target: { value: "New assignment" } });
+      renderer.root.findByProps({ id: "assignment-start-at" }).props.onChange({ target: { value: "2030-08-25T14:30" } });
+      renderer.root.findByProps({ id: "assignment-due-at" }).props.onChange({ target: { value: "2030-08-25T16:45" } });
     });
     await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
 
     assert.equal(requests[0]?.input, "/api/teacher/classes");
-    assert.deepEqual(JSON.parse(String(requests[1]?.init?.body)), {
+    const requestBody = JSON.parse(String(requests[1]?.init?.body));
+    assert.deepEqual(requestBody, {
       subjectTeacherAssignmentId: 1,
       title: "New assignment",
       description: null,
       assignmentType: "quiz",
-      startAt: null,
-      dueAt: null,
+      startAt: requestBody.startAt,
+      dueAt: requestBody.dueAt,
     });
+    assert.match(requestBody.startAt, /^2030-08-25T14:30:00[+-]\d{2}:\d{2}$/);
+    assert.match(requestBody.dueAt, /^2030-08-25T16:45:00[+-]\d{2}:\d{2}$/);
     assert.doesNotMatch(String(requests[1]?.init?.body), /teacher_id/);
     assert.match(renderedText(renderer), /teacher\/assignments\/8/);
   } finally {
@@ -966,8 +981,10 @@ test("Assignment edit preserves schedule seconds and timezone offsets", async ()
     await act(async () => {
       renderer = create(<MemoryRouter initialEntries={["/teacher/assignments/8/edit"]}><Routes><Route element={<TeacherAssignmentPage mode="edit" />} path="/teacher/assignments/:assignmentId/edit" /></Routes></MemoryRouter>);
     });
-    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.value, preciseAssignment.startAt);
-    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.value, preciseAssignment.dueAt);
+    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.type, "datetime-local");
+    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.type, "datetime-local");
+    assert.equal(renderer.root.findByProps({ id: "assignment-start-at" }).props.value, localDateTimeValue(preciseAssignment.startAt));
+    assert.equal(renderer.root.findByProps({ id: "assignment-due-at" }).props.value, localDateTimeValue(preciseAssignment.dueAt));
     await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
 
     assert.deepEqual(JSON.parse(String(requests[2]?.init?.body)), {

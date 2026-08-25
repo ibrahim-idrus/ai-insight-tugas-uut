@@ -41,6 +41,64 @@ function queryRows<T extends object>(database: Database, sql: string, parameters
   }
 }
 
+export function closeExpiredAssignments(database: Database, now = new Date()): number {
+  database.run(
+    `
+      UPDATE assignments
+      SET status = 'closed', updated_at = datetime('now')
+      WHERE status = 'published'
+        AND due_at IS NOT NULL
+        AND julianday(due_at) <= julianday(?)
+    `,
+    [now.toISOString()]
+  );
+  return database.getRowsModified();
+}
+
+export function ensureAssignmentSubmissionDeadlineGuard(database: Database): void {
+  const tables = queryRows<{ name: string }>(
+    database,
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('assignments', 'assignment_submissions')",
+    []
+  );
+  if (tables.length !== 2) return;
+
+  database.run(`
+    CREATE TRIGGER IF NOT EXISTS assignment_submission_schedule_insert_guard
+    BEFORE INSERT ON assignment_submissions
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM assignments
+      WHERE assignments.id = NEW.assignment_id
+        AND assignments.status = 'published'
+        AND (assignments.start_at IS NULL OR julianday(assignments.start_at) <= julianday('now'))
+        AND (assignments.due_at IS NULL OR julianday(assignments.due_at) > julianday('now'))
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'Assignment is not open for submissions');
+    END
+  `);
+  database.run(`
+    CREATE TRIGGER IF NOT EXISTS assignment_submission_schedule_update_guard
+    BEFORE UPDATE OF status, submitted_at ON assignment_submissions
+    WHEN (
+      (NEW.status IN ('submitted', 'graded') AND OLD.status NOT IN ('submitted', 'graded'))
+      OR (NEW.submitted_at IS NOT NULL AND OLD.submitted_at IS NULL)
+    )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM assignments
+        WHERE assignments.id = NEW.assignment_id
+          AND assignments.status = 'published'
+          AND (assignments.start_at IS NULL OR julianday(assignments.start_at) <= julianday('now'))
+          AND (assignments.due_at IS NULL OR julianday(assignments.due_at) > julianday('now'))
+      )
+    BEGIN
+      SELECT RAISE(ABORT, 'Assignment is not open for submissions');
+    END
+  `);
+}
+
 const assignmentSelect = `
   SELECT
     a.id,
@@ -128,6 +186,25 @@ export function findTeacherAssignment(
   assignmentId: number
 ): TeacherAssignment | null {
   return selectTeacherAssignment(database, teacherId, assignmentId);
+}
+
+export function isAssignmentOpenForSubmission(
+  database: Database,
+  assignmentId: number,
+  now = new Date()
+): boolean {
+  return queryRows<{ id: number }>(
+    database,
+    `
+      SELECT id
+      FROM assignments
+      WHERE id = ?
+        AND status = 'published'
+        AND (start_at IS NULL OR julianday(start_at) <= julianday(?))
+        AND (due_at IS NULL OR julianday(due_at) > julianday(?))
+    `,
+    [assignmentId, now.toISOString(), now.toISOString()]
+  ).length === 1;
 }
 
 export function createTeacherAssignment(

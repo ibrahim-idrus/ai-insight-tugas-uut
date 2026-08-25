@@ -5,6 +5,7 @@ import test from "node:test";
 import initSqlJs, { Database } from "sql.js";
 import { createApp } from "./app";
 import { MemorySessionStore } from "./auth/session-store";
+import { closeExpiredAssignments, isAssignmentOpenForSubmission } from "./teacher/assignment-repository";
 
 let SQL: Awaited<ReturnType<typeof initSqlJs>>;
 
@@ -337,12 +338,120 @@ test("reads an owned assignment and hides foreign assignments", async () => {
   const body = await own.json();
   assert.equal(body.title, "Quiz Aljabar Dasar");
   assert.equal(body.assignmentType, "quiz");
-  assert.equal(body.status, "published");
+  assert.equal(body.status, "closed");
   assert.equal(body.context.id, 1);
 
   const foreign = await app.request(`/api/teacher/assignments/${foreignAssignmentId}`, { headers: { Cookie: cookie } });
   assert.equal(foreign.status, 404);
   assert.deepEqual(await foreign.json(), { error: "Assignment not found" });
+});
+
+test("closes expired assignments and blocks submission before and after the schedule", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const ownContextId = contextIdFor(database, 2, 1, 1, 1);
+  const expiredAssignmentId = assignmentIdFor(database, ownContextId, "Quiz Aljabar Dasar");
+
+  assert.equal(isAssignmentOpenForSubmission(database, expiredAssignmentId, new Date("2026-08-25T12:00:00.000Z")), false);
+  const expired = await app.request(`/api/teacher/assignments/${expiredAssignmentId}`, { headers: { Cookie: cookie } });
+  assert.equal(expired.status, 200);
+  assert.equal((await expired.json()).status, "closed");
+  assert.throws(
+    () => database.run(`
+      INSERT INTO assignment_submissions (assignment_id, student_id, status)
+      VALUES (?, 11, 'submitted')
+    `, [expiredAssignmentId]),
+    /Assignment is not open for submissions/
+  );
+
+  const overdueDraftResponse = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      subjectTeacherAssignmentId: ownContextId,
+      title: "Overdue draft",
+      assignmentType: "task",
+      dueAt: "2020-08-25T16:00:00+00:00",
+    }),
+  });
+  assert.equal(overdueDraftResponse.status, 201);
+  const overdueDraft = await overdueDraftResponse.json();
+  assert.equal(overdueDraft.status, "draft");
+  const overdueDraftView = await app.request(`/api/teacher/assignments/${overdueDraft.id}`, { headers: { Cookie: cookie } });
+  assert.equal((await overdueDraftView.json()).status, "draft");
+  const overduePublishedResponse = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      subjectTeacherAssignmentId: ownContextId,
+      title: "Overdue publish",
+      assignmentType: "task",
+      dueAt: "2020-08-25T16:00:00+00:00",
+    }),
+  });
+  const overduePublished = await overduePublishedResponse.json();
+  const overduePublish = await app.request(`/api/teacher/assignments/${overduePublished.id}/publish`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(overduePublish.status, 200);
+  assert.equal((await overduePublish.json()).status, "closed");
+
+  const future = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      subjectTeacherAssignmentId: ownContextId,
+      title: "Scheduled task",
+      assignmentType: "task",
+      startAt: "2030-08-25T14:00:00+00:00",
+      dueAt: "2030-08-25T16:00:00+00:00",
+    }),
+  });
+  assert.equal(future.status, 201);
+  const futureAssignment = await future.json();
+  const published = await app.request(`/api/teacher/assignments/${futureAssignment.id}/publish`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(published.status, 200);
+
+  assert.equal(isAssignmentOpenForSubmission(database, futureAssignment.id, new Date("2030-08-25T13:59:00.000Z")), false);
+  assert.equal(isAssignmentOpenForSubmission(database, futureAssignment.id, new Date("2030-08-25T15:00:00.000Z")), true);
+  assert.equal(isAssignmentOpenForSubmission(database, futureAssignment.id, new Date("2030-08-25T16:00:00.000Z")), false);
+  assert.equal(closeExpiredAssignments(database, new Date("2030-08-25T16:00:00.000Z")), 1);
+  const closed = await app.request(`/api/teacher/assignments/${futureAssignment.id}`, { headers: { Cookie: cookie } });
+  assert.equal((await closed.json()).status, "closed");
+
+  const inProgressResponse = await app.request("/api/teacher/assignments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({
+      subjectTeacherAssignmentId: ownContextId,
+      title: "In-progress task",
+      assignmentType: "task",
+      startAt: "2020-08-25T08:00:00+00:00",
+      dueAt: "2030-08-25T16:00:00+00:00",
+    }),
+  });
+  const inProgressAssignment = await inProgressResponse.json();
+  await app.request(`/api/teacher/assignments/${inProgressAssignment.id}/publish`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+  });
+  database.run(`
+    INSERT INTO assignment_submissions (assignment_id, student_id, status)
+    VALUES (?, 11, 'in_progress')
+  `, [inProgressAssignment.id]);
+  assert.equal(closeExpiredAssignments(database, new Date("2030-08-25T16:00:00.000Z")), 1);
+  assert.throws(
+    () => database.run(`
+      UPDATE assignment_submissions
+      SET status = 'submitted', submitted_at = '2030-08-25T16:00:01+00:00'
+      WHERE assignment_id = ? AND student_id = 11
+    `, [inProgressAssignment.id]),
+    /Assignment is not open for submissions/
+  );
 });
 
 test("creates, updates, publishes, closes, and deletes an owned assignment", async () => {
