@@ -248,6 +248,57 @@ test("Material view renders the material and an edit link", async () => {
   }
 });
 
+test("Material view clears loaded state when its raw route parameters become malformed", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (async (input) => {
+    requests.push(String(input));
+    return new Response(
+      JSON.stringify({
+        id: 5,
+        title: "Aljabar Dasar",
+        description: "Pengenalan aljabar",
+        content: "Read this",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        updatedAt: "2026-08-02T00:00:00.000Z",
+      }),
+      { status: 200 }
+    );
+  }) as typeof fetch;
+
+  function MaterialRoute() {
+    const navigate = useNavigate();
+    return (
+      <>
+        <button onClick={() => navigate("/teacher/classes/1e0/materials/5")} type="button">Use malformed context</button>
+        <TeacherMaterialPage mode="view" />
+      </>
+    );
+  }
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1/materials/5"]}>
+          <Routes>
+            <Route element={<MaterialRoute />} path="/teacher/classes/:contextId/materials/:materialId" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+    await act(async () => {
+      renderer.root.findByType("button").props.onClick();
+    });
+
+    assert.deepEqual(requests, ["/api/teacher/classes/1/materials/5"]);
+    assert.match(renderedText(renderer), /Material not found/);
+    assert.doesNotMatch(renderedText(renderer), /Aljabar Dasar/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Material create page shows the material form without loading a material", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
@@ -374,5 +425,95 @@ test("Material update and delete requests keep the authenticated client contract
     ]);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("Material edit loads, saves allowed fields, and navigates to its view", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
+  globalThis.fetch = (async (input, init) => {
+    requests.push({ input: String(input), init });
+    return new Response(JSON.stringify({
+      id: 5, title: "Updated guide", description: "Intro", content: "Read this",
+      createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-02T00:00:00.000Z",
+    }), { status: init?.method === "PATCH" ? 200 : 200 });
+  }) as typeof fetch;
+
+  function Location() { return <span>{useLocation().pathname}</span>; }
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter initialEntries={["/teacher/classes/1/materials/5/edit"]}><Routes>
+        <Route element={<TeacherMaterialPage mode="edit" />} path="/teacher/classes/:contextId/materials/:materialId/edit" />
+        <Route element={<Location />} path="*" />
+      </Routes></MemoryRouter>);
+    });
+    assert.equal(renderer.root.findByProps({ id: "material-title" }).props.value, "Updated guide");
+    await act(async () => {
+      renderer.root.findByProps({ id: "material-title" }).props.onChange({ target: { value: "  Revised guide  " } });
+    });
+    await act(async () => {
+      await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} });
+    });
+    assert.equal(requests[0]?.input, "/api/teacher/classes/1/materials/5");
+    assert.deepEqual(requests[1], {
+      input: "/api/teacher/classes/1/materials/5",
+      init: { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Revised guide", description: "Intro", content: "Read this" }) },
+    });
+    assert.match(renderedText(renderer), /teacher\/classes\/1\/materials\/5/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("Material edit confirms deletion and returns to its class", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const requests: Array<{ input: string; init: RequestInit | undefined }> = [];
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { confirm: (message: string) => message === "Delete this material?" } });
+  globalThis.fetch = (async (input, init) => {
+    requests.push({ input: String(input), init });
+    if (init?.method === "DELETE") return new Response(null, { status: 204 });
+    return new Response(JSON.stringify({ id: 5, title: "Guide", description: null, content: null, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-02T00:00:00.000Z" }), { status: 200 });
+  }) as typeof fetch;
+
+  function Location() { return <span>{useLocation().pathname}</span>; }
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(<MemoryRouter initialEntries={["/teacher/classes/1/materials/5/edit"]}><Routes>
+        <Route element={<TeacherMaterialPage mode="edit" />} path="/teacher/classes/:contextId/materials/:materialId/edit" />
+        <Route element={<Location />} path="*" />
+      </Routes></MemoryRouter>);
+    });
+    await act(async () => { renderer.root.findAllByType("button").find((button) => button.props.children === "Delete material")!.props.onClick(); });
+    assert.deepEqual(requests[1], { input: "/api/teacher/classes/1/materials/5", init: { method: "DELETE", credentials: "include" } });
+    assert.match(renderedText(renderer), /teacher\/classes\/1/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow) Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow }); else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
+test("Material edit shows save and delete request failures", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  let mutation = "PATCH";
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { confirm: () => true } });
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method === mutation) return new Response(JSON.stringify({ error: `${mutation} failed` }), { status: 500 });
+    return new Response(JSON.stringify({ id: 5, title: "Guide", description: null, content: null, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-02T00:00:00.000Z" }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(<MemoryRouter initialEntries={["/teacher/classes/1/materials/5/edit"]}><Routes><Route element={<TeacherMaterialPage mode="edit" />} path="/teacher/classes/:contextId/materials/:materialId/edit" /></Routes></MemoryRouter>); });
+    await act(async () => { await renderer.root.findByType("form").props.onSubmit({ preventDefault() {} }); });
+    assert.match(renderedText(renderer), /PATCH failed/);
+    mutation = "DELETE";
+    await act(async () => { renderer.root.findAllByType("button").find((button) => button.props.children === "Delete material")!.props.onClick(); });
+    assert.match(renderedText(renderer), /DELETE failed/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalWindow) Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow }); else Reflect.deleteProperty(globalThis, "window");
   }
 });

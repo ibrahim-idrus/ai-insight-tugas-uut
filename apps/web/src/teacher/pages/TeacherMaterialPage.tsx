@@ -18,6 +18,7 @@ interface TeacherMaterialPageProps {
 const emptyForm: MaterialFormInput = { title: "", description: "", content: "" };
 
 function validId(value: string | undefined): number | null {
+  if (!value || !/^\d+$/.test(value)) return null;
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
@@ -73,7 +74,7 @@ export function TeacherMaterialPage({ mode }: TeacherMaterialPageProps) {
     return () => {
       active = false;
     };
-  }, [contextNumber, materialNumber, mode]);
+  }, [contextId, materialId, mode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
