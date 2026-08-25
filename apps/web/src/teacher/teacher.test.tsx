@@ -74,6 +74,26 @@ test("Classes page shows an empty state when no classes are assigned", async () 
   }
 });
 
+test("Classes page shows a loading state while assigned classes are loading", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (() => new Promise<Response>(() => {})) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter>
+          <TeacherClassesPage />
+        </MemoryRouter>
+      );
+    });
+
+    assert.match(renderedText(renderer), /Loading classes/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Context page renders its students and materials", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input) => {
@@ -121,6 +141,45 @@ test("Context page renders its students and materials", async () => {
     for (const text of ["X-A", "Matematika", "Ayu Lestari", "1001", "Bima Pratama", "1002", "Aljabar Dasar"]) {
       assert.match(output, new RegExp(text));
     }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Context page shows empty students and materials states", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    assert.equal(String(input), "/api/teacher/classes/1");
+    return new Response(
+      JSON.stringify({
+        id: 1,
+        class: { id: 1, name: "X-A", gradeLevel: 10 },
+        subject: { id: 1, name: "Matematika", code: "MTK" },
+        academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+        studentCount: 0,
+        materialCount: 0,
+        students: [],
+        materials: [],
+      }),
+      { status: 200 }
+    );
+  }) as typeof fetch;
+
+  try {
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(
+        <MemoryRouter initialEntries={["/teacher/classes/1"]}>
+          <Routes>
+            <Route element={<TeacherContextPage />} path="/teacher/classes/:contextId" />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    const output = renderedText(renderer);
+    assert.match(output, /No students are assigned to this class yet/);
+    assert.match(output, /No materials have been created for this class yet/);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -76,6 +76,27 @@ test("lists only the authenticated teacher's teaching contexts", async () => {
   assert.equal(body.contexts.some((context: any) => context.subject.name === "Bahasa Indonesia"), false);
 });
 
+test("requires a teacher session to list teaching contexts", async () => {
+  const { app } = await setupTeacherApp();
+
+  const response = await app.request("/api/teacher/classes");
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "Authentication required" });
+});
+
+test("forbids student sessions from teacher context routes", async () => {
+  const { app } = await setupTeacherApp();
+  const { cookie } = await login(app, "ahmad.rizki", "student123");
+
+  const response = await app.request("/api/teacher/classes", {
+    headers: { Cookie: cookie },
+  });
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(await response.json(), { error: "Forbidden" });
+});
+
 test("returns an authorized teaching context with its students and materials", async () => {
   const { app, database } = await setupTeacherApp();
   const { cookie } = await login(app, "adminarsito", "admin123");
@@ -144,12 +165,13 @@ test("creates, reads, updates, and deletes a teacher-owned material", async () =
     }),
   });
   assert.equal(updated.status, 200);
-  assert.deepEqual(await updated.json(), {
-    ...material,
-    title: "Updated guide",
-    description: null,
-    content: "Updated",
-  });
+  const updatedMaterial = await updated.json();
+  assert.equal(updatedMaterial.id, material.id);
+  assert.equal(updatedMaterial.title, "Updated guide");
+  assert.equal(updatedMaterial.description, null);
+  assert.equal(updatedMaterial.content, "Updated");
+  assert.equal(updatedMaterial.createdAt, material.createdAt);
+  assert.equal(typeof updatedMaterial.updatedAt, "string");
 
   const deleted = await app.request(`/api/teacher/classes/${contextId}/materials/${material.id}`, {
     method: "DELETE",

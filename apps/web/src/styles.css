@@ -601,6 +601,176 @@ button:disabled {
   transform: translateY(-1px);
 }
 
+/* Teacher classes, roster, and material screens */
+.page-content > section:not(.page-content) {
+  margin-top: 36px;
+}
+
+.page-content > section > .eyebrow {
+  margin-bottom: 12px;
+}
+
+.page-content > section > .placeholder-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.page-content > section > .placeholder-grid .placeholder-card {
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  min-height: 0;
+  text-decoration: none;
+}
+
+.page-content > section > .placeholder-grid .placeholder-card:hover {
+  border-color: var(--indigo);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.page-content > section .page-heading {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+}
+
+.page-content > section .page-heading h2 {
+  color: var(--text);
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  margin: 6px 0 0;
+}
+
+.page-content table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-collapse: separate;
+  border-radius: 16px;
+  border-spacing: 0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  width: 100%;
+}
+
+.page-content th,
+.page-content td {
+  border-bottom: 1px solid var(--border);
+  padding: 15px 18px;
+  text-align: left;
+}
+
+.page-content th {
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-content td {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.page-content tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.page-content tbody tr:hover td {
+  background: #fafbff;
+}
+
+.page-content td a {
+  color: var(--indigo);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.page-content td a:hover {
+  text-decoration: underline;
+}
+
+.page-content > p:not(.form-error) {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  margin: 0;
+  padding: 18px 20px;
+}
+
+.page-content > section > p {
+  background: var(--surface-muted);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  margin: 0;
+  padding: 18px 20px;
+}
+
+.page-content .form-error {
+  background: #fff4f2;
+  border: 1px solid #f2c5bd;
+  border-radius: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+}
+
+.page-content > article.placeholder-card {
+  min-height: 0;
+}
+
+.page-content > article.placeholder-card h2 {
+  font-size: 17px;
+  margin: 20px 0 8px;
+}
+
+.page-content > article.placeholder-card h2:first-child {
+  margin-top: 0;
+}
+
+.page-content .login-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  margin-top: 0;
+  max-width: 760px;
+  padding: 28px;
+}
+
+.page-content .login-form textarea {
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  min-height: 112px;
+  outline: none;
+  padding: 12px 15px;
+  resize: vertical;
+}
+
+.page-content .login-form textarea:focus {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.page-content .login-form > button[type="button"] {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--danger);
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.page-content .login-form > button[type="button"]:hover:not(:disabled) {
+  background: #fff4f2;
+}
+
 .login-footer-copy {
   border-top: 1px solid var(--border);
   margin-top: 30px;
@@ -685,6 +855,49 @@ button:disabled {
 
   .placeholder-grid {
     grid-template-columns: 1fr;
+  }
+
+  .page-content > section .page-heading {
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .page-content table,
+  .page-content thead,
+  .page-content tbody,
+  .page-content th,
+  .page-content td,
+  .page-content tr {
+    display: block;
+  }
+
+  .page-content table {
+    border-radius: 14px;
+  }
+
+  .page-content thead {
+    position: absolute;
+    height: 1px;
+    overflow: hidden;
+    width: 1px;
+  }
+
+  .page-content tbody tr {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+  }
+
+  .page-content tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .page-content td {
+    border: 0;
+    padding: 7px 16px;
+  }
+
+  .page-content .login-form {
+    padding: 22px;
   }
 }
 
