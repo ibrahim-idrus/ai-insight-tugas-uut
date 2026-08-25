@@ -157,4 +157,19 @@ test("DashboardAnalytics renders no-data states for nullable scores and empty st
   const output = renderedText(renderer);
   assert.match(output, /No graded data/);
   assert.match(output, /No ranked students yet/);
+
+  const trendRows = renderer.root.findAll((node) => node.props.className === "analytics-trend-row");
+  assert.equal(trendRows.length, 2);
+
+  const noDataTrendTrack = trendRows[0]!.findByProps({
+    className: "analytics-trend-bar analytics-trend-bar-empty",
+  });
+  assert.ok(noDataTrendTrack);
+  assert.equal(
+    trendRows[0]!.findAll((node) => node.props.className === "analytics-trend-fill").length,
+    0
+  );
+
+  const measuredTrendFill = trendRows[1]!.findByProps({ className: "analytics-trend-fill" });
+  assert.ok(measuredTrendFill);
 });

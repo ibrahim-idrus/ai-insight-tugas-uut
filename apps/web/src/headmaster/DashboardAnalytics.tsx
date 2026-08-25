@@ -117,11 +117,18 @@ function PeriodTrendCard({
               <span>{period.student_count} students tracked</span>
             </div>
             <div className="analytics-trend-bar-wrap">
-              <div className="analytics-trend-bar" aria-hidden="true">
-                <div
-                  className="analytics-trend-fill"
-                  style={{ width: `${((period.average_score ?? 0) / maxAverage) * 100}%` }}
-                />
+              <div
+                className={`analytics-trend-bar${
+                  period.average_score === null ? " analytics-trend-bar-empty" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {period.average_score !== null && (
+                  <div
+                    className="analytics-trend-fill"
+                    style={{ width: `${(period.average_score / maxAverage) * 100}%` }}
+                  />
+                )}
               </div>
               <div className="analytics-trend-values">
                 <span>{formatScore(period.average_score)}</span>
