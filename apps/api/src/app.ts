@@ -19,6 +19,7 @@ import { registerTeacherAssignmentRoutes } from "./teacher/assignment-routes.js"
 import { registerTeacherAnalyticsRoutes } from "./teacher/analytics-routes.js";
 import { registerTeacherHomeroomRoutes } from "./teacher/homeroom-routes.js";
 import { registerTeacherQuizRoutes } from "./teacher/quiz-routes.js";
+import { getHeadmasterAnalytics, type AcademicPeriodRow } from "./headmaster/analytics.js";
 
 const DB_PATH = join(import.meta.dirname, "../../../database/lms.db");
 
@@ -41,6 +42,63 @@ export function saveDb() {
   const data = db.export();
   const buffer = Buffer.from(data);
   writeFileSync(DB_PATH, buffer);
+}
+
+type SqlResult = { columns: string[]; values: unknown[][] }[];
+type AcademicPeriodWithState = AcademicPeriodRow & { is_active: number };
+
+function firstRow(result: SqlResult) {
+  return result[0]?.values[0] ?? null;
+}
+
+function toRows(result: SqlResult) {
+  if (!result[0]) return [];
+  return result[0].values.map((row) => {
+    const obj: Record<string, unknown> = {};
+    result[0].columns.forEach((col, i) => {
+      obj[col] = row[i];
+    });
+    return obj;
+  });
+}
+
+function parsePositiveInteger(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getAcademicPeriods(database: Database): AcademicPeriodWithState[] {
+  return toRows(
+    database.exec(
+      `SELECT id, school_year, semester, start_date, end_date, is_active
+       FROM academic_periods
+       ORDER BY start_date DESC`
+    )
+  ).map((row) => ({
+    id: Number(row.id),
+    school_year: String(row.school_year),
+    semester: Number(row.semester),
+    start_date: String(row.start_date),
+    end_date: String(row.end_date),
+    is_active: Number(row.is_active),
+  })) as AcademicPeriodWithState[];
+}
+
+function resolveAcademicPeriod(
+  academicPeriods: AcademicPeriodWithState[],
+  requestedPeriodId: string | undefined
+): AcademicPeriodWithState | null {
+  const parsedPeriodId = parsePositiveInteger(requestedPeriodId);
+  if (parsedPeriodId !== null) {
+    const requestedPeriod = academicPeriods.find((period) => period.id === parsedPeriodId);
+    if (requestedPeriod) return requestedPeriod;
+  }
+
+  const activePeriod = academicPeriods.find((period) => period.is_active === 1);
+  if (activePeriod) return activePeriod;
+
+  return academicPeriods[0] ?? null;
 }
 
 export function createApp(
@@ -138,45 +196,48 @@ export function createApp(
   registerTeacherAnalyticsRoutes(app, database, sessions, persist);
   registerTeacherHomeroomRoutes(app, database, sessions, persist);
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
-    const periodId = context.req.query("academic_period_id");
+    const academicPeriods = getAcademicPeriods(database);
+    const resolvedPeriod = resolveAcademicPeriod(academicPeriods, context.req.query("academic_period_id"));
+    const activePeriodId = resolvedPeriod?.id ?? null;
+    const periodParams = activePeriodId === null ? [] : [activePeriodId];
 
-    const periodFilter = periodId ? "AND ap.id = ?" : "";
-    const periodParams = periodId ? [Number(periodId)] : [];
-
-    const latestPeriod = database.exec(
-      `SELECT id FROM academic_periods ORDER BY start_date DESC LIMIT 1`
+    const kpiStudents = database.exec(
+      activePeriodId === null
+        ? `SELECT 0`
+        : `SELECT COUNT(*) FROM student_enrollments WHERE academic_period_id = ? AND status = 'active'`,
+      periodParams
     );
-    const activePeriodId = periodId ? Number(periodId) : (latestPeriod[0]?.values[0]?.[0] as number) ?? null;
-
-    const kpiStudents = database.exec(`SELECT COUNT(*) FROM students`);
     const kpiTeachers = database.exec(`SELECT COUNT(*) FROM users WHERE role = 'teacher'`);
     const kpiClasses = database.exec(`SELECT COUNT(*) FROM classes`);
     const kpiSubjects = database.exec(`SELECT COUNT(*) FROM subjects`);
     const kpiAssignments = database.exec(
       `SELECT COUNT(*) FROM assignments a
        JOIN subject_teacher_assignments sta ON sta.id = a.subject_teacher_assignment_id
-       WHERE a.status = 'published' ${periodId ? "AND sta.academic_period_id = ?" : ""}`,
+       WHERE a.status = 'published' ${activePeriodId === null ? "" : "AND sta.academic_period_id = ?"}`,
       periodParams
     );
     const kpiAvgAttitude = database.exec(
       `SELECT AVG(CASE score WHEN 'A' THEN 4 WHEN 'B' THEN 3 WHEN 'C' THEN 2 WHEN 'D' THEN 1 END)
-       FROM attitudes WHERE academic_period_id = ?`,
-      [activePeriodId]
+       FROM attitudes ${activePeriodId === null ? "" : "WHERE academic_period_id = ?"}`,
+      periodParams
     );
 
     const studentsPerClass = database.exec(
-      `SELECT c.id, c.name, c.grade_level, COUNT(s.id) as student_count
+      `SELECT c.id, c.name, c.grade_level, COUNT(se.id) as student_count
        FROM classes c
-       LEFT JOIN students s ON s.class_id = c.id
+       LEFT JOIN student_enrollments se
+         ON se.class_id = c.id
+        ${activePeriodId === null ? "" : "AND se.academic_period_id = ? AND se.status = 'active'"}
        GROUP BY c.id
-       ORDER BY c.grade_level, c.name`
+       ORDER BY c.grade_level, c.name`,
+      periodParams
     );
 
     const assignmentsByType = database.exec(
       `SELECT a.assignment_type, COUNT(*) as count
        FROM assignments a
        JOIN subject_teacher_assignments sta ON sta.id = a.subject_teacher_assignment_id
-       WHERE a.status = 'published' ${periodId ? "AND sta.academic_period_id = ?" : ""}
+       WHERE a.status = 'published' ${activePeriodId === null ? "" : "AND sta.academic_period_id = ?"}
        GROUP BY a.assignment_type`,
       periodParams
     );
@@ -184,7 +245,7 @@ export function createApp(
     const assignmentsPerSubject = database.exec(
       `SELECT sub.id, sub.name, sub.code, COUNT(a.id) as count
        FROM subjects sub
-       LEFT JOIN subject_teacher_assignments sta ON sta.subject_id = sub.id ${periodId ? "AND sta.academic_period_id = ?" : ""}
+       LEFT JOIN subject_teacher_assignments sta ON sta.subject_id = sub.id ${activePeriodId === null ? "" : "AND sta.academic_period_id = ?"}
        LEFT JOIN assignments a ON a.subject_teacher_assignment_id = sta.id AND a.status = 'published'
        GROUP BY sub.id
        ORDER BY count DESC`,
@@ -196,26 +257,38 @@ export function createApp(
               AVG(CASE att.score WHEN 'A' THEN 4 WHEN 'B' THEN 3 WHEN 'C' THEN 2 WHEN 'D' THEN 1 END) as avg_score,
               COUNT(att.id) as record_count
        FROM classes c
-       LEFT JOIN attitudes att ON att.class_id = c.id AND att.academic_period_id = ?
+       LEFT JOIN attitudes att ON att.class_id = c.id ${activePeriodId === null ? "" : "AND att.academic_period_id = ?"}
        GROUP BY c.id
        ORDER BY c.grade_level, c.name`,
-      [activePeriodId]
+      periodParams
     );
 
     const classOverview = database.exec(
       `SELECT c.id, c.name, c.grade_level,
               u.name as homeroom_teacher,
-              COUNT(s.id) as student_count,
-              AVG(CASE att.score WHEN 'A' THEN 4 WHEN 'B' THEN 3 WHEN 'C' THEN 2 WHEN 'D' THEN 1 END) as avg_attitude,
-              COUNT(att.id) as attitude_records
+              COALESCE(se.student_count, 0) as student_count,
+              att.avg_attitude,
+              COALESCE(att.attitude_records, 0) as attitude_records
        FROM classes c
-       LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id AND ha.academic_period_id = ?
+       LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id ${activePeriodId === null ? "" : "AND ha.academic_period_id = ?"}
        LEFT JOIN users u ON u.id = ha.teacher_id
-       LEFT JOIN students s ON s.class_id = c.id
-       LEFT JOIN attitudes att ON att.class_id = c.id AND att.academic_period_id = ?
+       LEFT JOIN (
+         SELECT class_id, COUNT(*) as student_count
+         FROM student_enrollments
+         ${activePeriodId === null ? "" : "WHERE academic_period_id = ? AND status = 'active'"}
+         GROUP BY class_id
+       ) se ON se.class_id = c.id
+       LEFT JOIN (
+         SELECT class_id,
+                AVG(CASE score WHEN 'A' THEN 4 WHEN 'B' THEN 3 WHEN 'C' THEN 2 WHEN 'D' THEN 1 END) as avg_attitude,
+                COUNT(*) as attitude_records
+         FROM attitudes
+         ${activePeriodId === null ? "" : "WHERE academic_period_id = ?"}
+         GROUP BY class_id
+       ) att ON att.class_id = c.id
        GROUP BY c.id
        ORDER BY c.grade_level, c.name`,
-      [activePeriodId, activePeriodId]
+      activePeriodId === null ? [] : [activePeriodId, activePeriodId, activePeriodId]
     );
 
     const teacherAssignments = database.exec(
@@ -226,7 +299,7 @@ export function createApp(
        JOIN subjects sub ON sub.id = sta.subject_id
        JOIN classes c ON c.id = sta.class_id
        JOIN academic_periods ap ON ap.id = sta.academic_period_id
-       ${periodId ? "WHERE sta.academic_period_id = ?" : ""}
+       ${activePeriodId === null ? "" : "WHERE sta.academic_period_id = ?"}
        ORDER BY u.name, sub.name, c.name`,
       periodParams
     );
@@ -236,27 +309,10 @@ export function createApp(
        FROM homeroom_assignments ha
        JOIN classes c ON c.id = ha.class_id
        JOIN users u ON u.id = ha.teacher_id
-       ${periodId ? "WHERE ha.academic_period_id = ?" : ""}
+       ${activePeriodId === null ? "" : "WHERE ha.academic_period_id = ?"}
        ORDER BY c.grade_level, c.name`,
       periodParams
     );
-
-    const academicPeriods = database.exec(
-      `SELECT id, school_year, semester, start_date, end_date FROM academic_periods ORDER BY start_date DESC`
-    );
-
-    function firstRow(result: { columns: string[]; values: unknown[][] }[]) {
-      return result[0]?.values[0] ?? null;
-    }
-
-    function toRows(result: { columns: string[]; values: unknown[][] }[]) {
-      if (!result[0]) return [];
-      return result[0].values.map((row) => {
-        const obj: Record<string, unknown> = {};
-        result[0].columns.forEach((col, i) => { obj[col] = row[i]; });
-        return obj;
-      });
-    }
 
     return context.json({
       active_period_id: activePeriodId,
@@ -275,7 +331,12 @@ export function createApp(
       class_overview: toRows(classOverview),
       teacher_assignments: toRows(teacherAssignments),
       homeroom_overview: toRows(homeroomOverview),
-      academic_periods: toRows(academicPeriods),
+      academic_periods: academicPeriods.map(({ is_active: _isActive, ...period }) => period),
+      analytics: getHeadmasterAnalytics(
+        database,
+        activePeriodId ?? 0,
+        academicPeriods.map(({ is_active: _isActive, ...period }) => period) as AcademicPeriodRow[]
+      ),
     });
   });
 
@@ -284,15 +345,32 @@ export function createApp(
   app.get("/api/headmaster/students", requireRole(database, sessions, "headmaster"), (context) => {
     const search = context.req.query("search") ?? "";
     const classId = context.req.query("class_id");
+    const academicPeriodId = parsePositiveInteger(context.req.query("academic_period_id"));
 
-    let query = `
-      SELECT s.id, s.name, s.nis, u.username, c.name as class_name, c.grade_level
-      FROM students s
-      JOIN users u ON u.id = s.user_id
-      JOIN classes c ON c.id = s.class_id
-    `;
+    let query: string;
     const conditions: string[] = [];
     const params: unknown[] = [];
+
+    if (academicPeriodId !== null) {
+      query = `
+        SELECT s.id, s.name, s.nis, u.username, c.name as class_name, c.grade_level
+        FROM students s
+        JOIN users u ON u.id = s.user_id
+        JOIN student_enrollments se
+          ON se.student_id = s.id
+         AND se.academic_period_id = ?
+         AND se.status = 'active'
+        JOIN classes c ON c.id = se.class_id
+      `;
+      params.push(academicPeriodId);
+    } else {
+      query = `
+        SELECT s.id, s.name, s.nis, u.username, c.name as class_name, c.grade_level
+        FROM students s
+        JOIN users u ON u.id = s.user_id
+        JOIN classes c ON c.id = s.class_id
+      `;
+    }
 
     if (search) {
       conditions.push("(s.name LIKE ? OR u.username LIKE ? OR s.nis LIKE ?)");
@@ -300,7 +378,7 @@ export function createApp(
       params.push(searchTerm, searchTerm, searchTerm);
     }
     if (classId) {
-      conditions.push("s.class_id = ?");
+      conditions.push(`${academicPeriodId !== null ? "se.class_id" : "s.class_id"} = ?`);
       params.push(Number(classId));
     }
 
@@ -346,20 +424,21 @@ export function createApp(
   });
 
   app.get("/api/headmaster/classes", requireRole(database, sessions, "headmaster"), (context) => {
-    const periodId = context.req.query("academic_period_id");
-    const activePeriod = periodId ? Number(periodId) : null;
+    const activePeriod = parsePositiveInteger(context.req.query("academic_period_id"));
 
     const result = database.exec(`
       SELECT c.id, c.name, c.grade_level,
              u.name as homeroom_teacher,
-             COUNT(s.id) as student_count
+             COUNT(se.id) as student_count
       FROM classes c
       LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id ${activePeriod ? "AND ha.academic_period_id = ?" : ""}
       LEFT JOIN users u ON u.id = ha.teacher_id
-      LEFT JOIN students s ON s.class_id = c.id
+      LEFT JOIN student_enrollments se
+        ON se.class_id = c.id
+       ${activePeriod ? "AND se.academic_period_id = ? AND se.status = 'active'" : ""}
       GROUP BY c.id
       ORDER BY c.grade_level, c.name
-    `, activePeriod ? [activePeriod] : []);
+    `, activePeriod ? [activePeriod, activePeriod] : []);
 
     const toRows = (r: { columns: string[]; values: unknown[][] }[]) => {
       if (!r[0]) return [];
@@ -507,8 +586,9 @@ export function createApp(
   });
 
   app.get("/api/headmaster/assignments-by-type-per-class", requireRole(database, sessions, "headmaster"), (context) => {
-    const periodId = context.req.query("academic_period_id");
-    const periodParams = periodId ? [Number(periodId)] : [];
+    const resolvedPeriod = resolveAcademicPeriod(getAcademicPeriods(database), context.req.query("academic_period_id"));
+    const activePeriodId = resolvedPeriod?.id ?? null;
+    const periodParams = activePeriodId === null ? [] : [activePeriodId];
 
     const result = database.exec(`
       SELECT c.id as class_id, c.name as class_name, c.grade_level,
@@ -516,7 +596,7 @@ export function createApp(
       FROM assignments a
       JOIN subject_teacher_assignments sta ON sta.id = a.subject_teacher_assignment_id
       JOIN classes c ON c.id = sta.class_id
-      WHERE a.status = 'published' ${periodId ? "AND sta.academic_period_id = ?" : ""}
+      WHERE a.status = 'published' ${activePeriodId === null ? "" : "AND sta.academic_period_id = ?"}
       GROUP BY c.id, a.assignment_type
       ORDER BY c.grade_level, c.name, a.assignment_type
     `, periodParams);
