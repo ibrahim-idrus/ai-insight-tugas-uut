@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --import tsx --test src/auth/routing.test.ts src/auth/AuthContext.test.tsx src/teacher/teacher.test.tsx"
+    "test": "node --import tsx --test src/auth/routing.test.ts src/auth/AuthContext.test.tsx src/teacher/teacher.test.tsx src/headmaster/DashboardAnalytics.test.tsx"
   },
   "dependencies": {
     "react": "^18.3.0",

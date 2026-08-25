@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "../auth/api";
+import { DashboardAnalytics } from "./DashboardAnalytics";
 
 interface AcademicPeriod {
   id: number;
@@ -72,6 +73,7 @@ interface HomeroomRow {
 interface DashboardData {
   active_period_id: number | null;
   kpi: Kpi;
+  analytics: DashboardAnalytics;
   students_per_class: StudentsPerClass[];
   assignments_by_type: AssignmentsByType[];
   assignments_per_subject: AssignmentsPerSubject[];
@@ -311,6 +313,8 @@ export default function HeadmasterDashboard() {
           onClick={() => setActiveModal("attitudes")}
         />
       </div>
+
+      <DashboardAnalytics analytics={data.analytics} />
 
       <div className="chart-grid">
         <div className="chart-card">
@@ -694,17 +698,19 @@ function getModalTitle(type: ModalType): string {
   }
 }
 
-function StudentsDetail({ periodId: _periodId, onLoaded }: { periodId: number | null; onLoaded: () => void }) {
+function StudentsDetail({ periodId, onLoaded }: { periodId: number | null; onLoaded: () => void }) {
   const [students, setStudents] = useState<StudentDetail[]>([]);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams();
+    if (periodId) params.set("academic_period_id", String(periodId));
     if (search) params.set("search", search);
     if (classFilter) params.set("class_id", classFilter);
 
-    fetch(apiUrl(`/api/headmaster/students?${params.toString()}`), {
+    const query = params.toString();
+    fetch(apiUrl(`/api/headmaster/students${query ? `?${query}` : ""}`), {
       credentials: "include",
     })
       .then((r) => r.json())
@@ -713,7 +719,7 @@ function StudentsDetail({ periodId: _periodId, onLoaded }: { periodId: number | 
         onLoaded();
       })
       .catch(() => onLoaded());
-  }, [search, classFilter, onLoaded]);
+  }, [periodId, search, classFilter, onLoaded]);
 
   const classNames = [...new Set(students.map((s) => s.class_name))].sort();
 
