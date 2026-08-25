@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { dashboardForRole, guardDestination } from "./auth/routing";
 import type { Role } from "./auth/types";
 import { TeacherClassesPage } from "./teacher/pages/TeacherClassesPage";
+import { TeacherContextPage } from "./teacher/pages/TeacherContextPage";
 
 interface NavigationItem {
   label: string;
@@ -299,6 +300,7 @@ function AppRoutes() {
           <Route element={<Navigate replace to="dashboard" />} index />
           <Route element={<PlaceholderPage description="Your protected teacher workspace is active." title="Dashboard" />} path="dashboard" />
           <Route element={<TeacherClassesPage />} path="classes" />
+          <Route element={<TeacherContextPage />} path="classes/:contextId" />
           <Route element={<PlaceholderPage description="Assignment tools will be added in a later LMS slice." title="Assignments" />} path="assignments" />
           <Route element={<PlaceholderPage description="Grade tools will be added in a later LMS slice." title="Grades" />} path="grades" />
         </Route>
