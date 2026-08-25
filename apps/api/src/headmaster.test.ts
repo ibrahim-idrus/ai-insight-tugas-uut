@@ -177,6 +177,68 @@ test("headmaster analytics treat no-assignment periods as neutral no-data", asyn
   assert.equal(typeof completionSignal.metric, "string");
 });
 
+test("headmaster analytics flag no-graded students when their class has published assessments", async () => {
+  const database = await createSeededDatabase();
+  database.run(
+    `INSERT INTO subject_teacher_assignments (teacher_id, class_id, subject_id, academic_period_id)
+     VALUES (?, ?, ?, ?)`,
+    [2, 1, 1, 3]
+  );
+  const assignmentContextId = Number(
+    database.exec("SELECT MAX(id) FROM subject_teacher_assignments")[0].values[0][0]
+  );
+  database.run(
+    `INSERT INTO assignments
+       (subject_teacher_assignment_id, title, description, assignment_type, start_at, due_at, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      assignmentContextId,
+      "Historical no-grade assessment",
+      "Published without any submissions",
+      "quiz",
+      "2024-08-01 08:00:00",
+      "2024-08-01 10:00:00",
+      "published",
+    ]
+  );
+  const assignmentId = Number(database.exec("SELECT MAX(id) FROM assignments")[0].values[0][0]);
+  database.run(
+    `INSERT INTO assignment_questions (assignment_id, question_text, question_type, points, question_order, answer_key)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [assignmentId, "Historical assessment", "essay", 100, 1, "Rubric"]
+  );
+  database.run(
+    `INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
+     VALUES
+       (?, ?, ?, ?, ?, ?),
+       (?, ?, ?, ?, ?, ?),
+       (?, ?, ?, ?, ?, ?),
+       (?, ?, ?, ?, ?, ?)`,
+    [
+      assignmentId, 1, "2024-08-01 08:00:00", "2024-08-01 08:20:00", "submitted", null,
+      assignmentId, 2, "2024-08-01 08:00:00", "2024-08-01 08:21:00", "submitted", null,
+      assignmentId, 3, "2024-08-01 08:00:00", "2024-08-01 08:22:00", "submitted", null,
+      assignmentId, 4, "2024-08-01 08:00:00", "2024-08-01 08:23:00", "submitted", null,
+    ]
+  );
+
+  const app = createApp(database, new MemorySessionStore());
+  const { cookie } = await login(app, "adminbaim", "admin123");
+  const response = await app.request("/api/headmaster/dashboard?academic_period_id=3", {
+    headers: { Cookie: cookie },
+  });
+  const body = await response.json();
+  const completionSignal = body.analytics.insight_signals.find(
+    (signal: { key: string }) => signal.key === "completion_rate"
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(body.analytics.overview.students_needing_support, 4);
+  assert.equal(body.analytics.student_ranking.length, 0);
+  assert.equal(completionSignal.tone, "positive");
+  assert.equal(completionSignal.metric, 100);
+});
+
 test("headmaster dashboard remains protected", async () => {
   const database = await createSeededDatabase();
   const app = createApp(database, new MemorySessionStore());

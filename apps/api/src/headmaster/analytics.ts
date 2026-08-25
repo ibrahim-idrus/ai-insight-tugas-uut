@@ -401,7 +401,7 @@ export function getHeadmasterAnalytics(
       const studentAverage = average(studentScores);
       const studentAttitude = average(attitudesByStudent.get(enrollment.student_id) ?? []);
       const classAssignmentCount = (classAssignments.get(enrollment.class_id) ?? []).length;
-      const classHasAssessmentData = classScoreBuckets.has(enrollment.class_id);
+      const classHasAssessmentData = classAssignmentCount > 0;
       const completedCount = studentCompletedCounts.get(enrollment.student_id) ?? 0;
       const studentCompletionRate = nullablePercent(completedCount, classAssignmentCount);
 
