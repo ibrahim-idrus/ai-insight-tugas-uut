@@ -102,6 +102,7 @@ interface PeriodMetrics {
   classRanking: HeadmasterAnalytics["class_ranking"];
   studentRanking: HeadmasterAnalytics["student_ranking"];
   subjectPerformance: HeadmasterAnalytics["subject_performance"];
+  completionRateAvailable: boolean;
 }
 
 type QueryResult = Array<{ columns: string[]; values: unknown[][] }>;
@@ -137,6 +138,11 @@ function average(numbers: number[]): number | null {
 function percent(part: number, total: number): number {
   if (total <= 0) return 0;
   return roundMetric((part / total) * 100);
+}
+
+function nullablePercent(part: number, total: number): number | null {
+  if (total <= 0) return null;
+  return percent(part, total);
 }
 
 function compareNullableDescending(left: number | null, right: number | null): number {
@@ -385,21 +391,25 @@ export function getHeadmasterAnalytics(
 
     const studentCount = studentById.size;
     const averageScore = average(allScores);
-    const averageAttitude = average(periodAttitudes.map((row) => scoreToNumber(row.score)).filter((value): value is number => value !== null));
-    const completionRate = percent(completedSubmissions, expectedSubmissions);
+    const averageAttitude = average(
+      periodAttitudes.map((row) => scoreToNumber(row.score)).filter((value): value is number => value !== null)
+    );
+    const completionRate = nullablePercent(completedSubmissions, expectedSubmissions);
 
     for (const enrollment of periodEnrollments) {
       const studentScores = studentScoreBuckets.get(enrollment.student_id) ?? [];
       const studentAverage = average(studentScores);
       const studentAttitude = average(attitudesByStudent.get(enrollment.student_id) ?? []);
       const classAssignmentCount = (classAssignments.get(enrollment.class_id) ?? []).length;
+      const classHasAssessmentData = classScoreBuckets.has(enrollment.class_id);
       const completedCount = studentCompletedCounts.get(enrollment.student_id) ?? 0;
-      const studentCompletionRate = percent(completedCount, classAssignmentCount);
+      const studentCompletionRate = nullablePercent(completedCount, classAssignmentCount);
 
       if (
-        (studentAverage !== null && studentAverage < 75) ||
-        studentCompletionRate < 60 ||
-        (studentAttitude !== null && studentAttitude <= 2)
+        (classHasAssessmentData && studentAverage === null) ||
+        (studentAverage !== null && studentAverage < 60) ||
+        (studentCompletionRate !== null && studentCompletionRate < 70) ||
+        (studentAttitude !== null && studentAttitude < 2.5)
       ) {
         supportStudents.add(enrollment.student_id);
       }
@@ -416,10 +426,11 @@ export function getHeadmasterAnalytics(
           class_name: className,
           student_count: students.length,
           average_score: average(classScoreBuckets.get(classId) ?? []),
-          completion_rate: percent(classCompletedCounts.get(classId) ?? 0, expectedForClass),
+          completion_rate: nullablePercent(classCompletedCounts.get(classId) ?? 0, expectedForClass) ?? 0,
           average_attitude: average(attitudesByClass.get(classId) ?? []),
         };
       })
+      .filter((row) => row.average_score !== null)
       .sort((left, right) => {
         const scoreCompare = compareNullableDescending(left.average_score, right.average_score);
         if (scoreCompare !== 0) return scoreCompare;
@@ -461,7 +472,7 @@ export function getHeadmasterAnalytics(
           subject_name: subject.subject_name,
           assignment_count: assignments.length,
           average_score: average(subjectScoreBuckets.get(subject.subject_id) ?? []),
-          completion_rate: percent(subjectCompletedCounts.get(subject.subject_id) ?? 0, expectedForSubject),
+          completion_rate: nullablePercent(subjectCompletedCounts.get(subject.subject_id) ?? 0, expectedForSubject) ?? 0,
         };
       })
       .sort((left, right) => {
@@ -474,13 +485,14 @@ export function getHeadmasterAnalytics(
       overview: {
         student_count: studentCount,
         average_score: averageScore,
-        completion_rate: completionRate,
+        completion_rate: completionRate ?? 0,
         average_attitude: averageAttitude,
         students_needing_support: supportStudents.size,
       },
       classRanking,
       studentRanking,
       subjectPerformance,
+      completionRateAvailable: completionRate !== null,
     };
   };
 
@@ -494,6 +506,7 @@ export function getHeadmasterAnalytics(
     classRanking: [],
     studentRanking: [],
     subjectPerformance: [],
+    completionRateAvailable: false,
   };
   const selectedIndex = academicPeriods.findIndex((period) => period.id === selectedPeriodId);
   const previousMetrics =
@@ -533,12 +546,19 @@ export function getHeadmasterAnalytics(
       {
         key: "completion_rate",
         title: "Completion Rate",
-        detail:
-          selectedMetrics.overview.completion_rate >= 85
+        detail: selectedMetrics.completionRateAvailable
+          ? selectedMetrics.overview.completion_rate >= 85
             ? "Assignment completion is staying on track for the selected period."
-            : "Assignment completion needs attention in the selected period.",
-        metric: selectedMetrics.overview.completion_rate,
-        tone: selectedMetrics.overview.completion_rate >= 85 ? "positive" : "warning",
+            : "Assignment completion needs attention in the selected period."
+          : "No completion data is available for the selected period.",
+        metric: selectedMetrics.completionRateAvailable
+          ? selectedMetrics.overview.completion_rate
+          : "No data",
+        tone: selectedMetrics.completionRateAvailable
+          ? selectedMetrics.overview.completion_rate >= 85
+            ? "positive"
+            : "warning"
+          : "neutral",
       },
       {
         key: "enrollment_trend",

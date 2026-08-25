@@ -424,21 +424,42 @@ export function createApp(
   });
 
   app.get("/api/headmaster/classes", requireRole(database, sessions, "headmaster"), (context) => {
-    const activePeriod = parsePositiveInteger(context.req.query("academic_period_id"));
+    const requestedPeriodId = parsePositiveInteger(context.req.query("academic_period_id"));
+    const resolvedPeriod = resolveAcademicPeriod(getAcademicPeriods(database), context.req.query("academic_period_id"));
+    const homeroomPeriodId = requestedPeriodId ?? resolvedPeriod?.id ?? null;
 
-    const result = database.exec(`
-      SELECT c.id, c.name, c.grade_level,
-             u.name as homeroom_teacher,
-             COUNT(se.id) as student_count
-      FROM classes c
-      LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id ${activePeriod ? "AND ha.academic_period_id = ?" : ""}
-      LEFT JOIN users u ON u.id = ha.teacher_id
-      LEFT JOIN student_enrollments se
-        ON se.class_id = c.id
-       ${activePeriod ? "AND se.academic_period_id = ? AND se.status = 'active'" : ""}
-      GROUP BY c.id
-      ORDER BY c.grade_level, c.name
-    `, activePeriod ? [activePeriod, activePeriod] : []);
+    const result = requestedPeriodId !== null
+      ? database.exec(
+          `
+            SELECT c.id, c.name, c.grade_level,
+                   u.name as homeroom_teacher,
+                   COUNT(se.id) as student_count
+            FROM classes c
+            LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id AND ha.academic_period_id = ?
+            LEFT JOIN users u ON u.id = ha.teacher_id
+            LEFT JOIN student_enrollments se
+              ON se.class_id = c.id
+             AND se.academic_period_id = ?
+             AND se.status = 'active'
+            GROUP BY c.id
+            ORDER BY c.grade_level, c.name
+          `,
+          [requestedPeriodId, requestedPeriodId]
+        )
+      : database.exec(
+          `
+            SELECT c.id, c.name, c.grade_level,
+                   u.name as homeroom_teacher,
+                   COUNT(s.id) as student_count
+            FROM classes c
+            LEFT JOIN homeroom_assignments ha ON ha.class_id = c.id ${homeroomPeriodId === null ? "" : "AND ha.academic_period_id = ?"}
+            LEFT JOIN users u ON u.id = ha.teacher_id
+            LEFT JOIN students s ON s.class_id = c.id
+            GROUP BY c.id
+            ORDER BY c.grade_level, c.name
+          `,
+          homeroomPeriodId === null ? [] : [homeroomPeriodId]
+        );
 
     const toRows = (r: { columns: string[]; values: unknown[][] }[]) => {
       if (!r[0]) return [];

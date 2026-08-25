@@ -125,6 +125,58 @@ test("period-specific enrollment and rankings are ordered and exclude ungraded s
   assert.ok(currentBody.analytics.overview.completion_rate < 100);
 });
 
+test("headmaster classes keep current roster counts when academic_period_id is omitted", async () => {
+  const database = await createSeededDatabase();
+  const app = createApp(database, new MemorySessionStore());
+  const { cookie } = await login(app, "adminbaim", "admin123");
+  const currentRosterResponse = await app.request("/api/headmaster/classes", {
+    headers: { Cookie: cookie },
+  });
+  const historicalResponse = await app.request("/api/headmaster/classes?academic_period_id=3", {
+    headers: { Cookie: cookie },
+  });
+  const currentRoster = (await currentRosterResponse.json()).classes;
+  const historicalRoster = (await historicalResponse.json()).classes;
+
+  assert.equal(currentRosterResponse.status, 200);
+  assert.equal(currentRoster.length, 6);
+  assert.deepEqual(
+    currentRoster.map((row: { student_count: number }) => row.student_count),
+    [5, 5, 5, 5, 5, 5]
+  );
+  assert.deepEqual(
+    currentRoster.map((row: { homeroom_teacher: string }) => row.homeroom_teacher),
+    ["Arsito Guru", "Alfian Guru", "Arsito Guru", "Alfian Guru", "Arsito Guru", "Alfian Guru"]
+  );
+  assert.notDeepEqual(
+    historicalRoster.map((row: { student_count: number }) => row.student_count),
+    currentRoster.map((row: { student_count: number }) => row.student_count)
+  );
+});
+
+test("headmaster analytics treat no-assignment periods as neutral no-data", async () => {
+  const database = await createSeededDatabase();
+  const app = createApp(database, new MemorySessionStore());
+  const { cookie } = await login(app, "adminbaim", "admin123");
+  const response = await app.request("/api/headmaster/dashboard?academic_period_id=3", {
+    headers: { Cookie: cookie },
+  });
+  const body = await response.json();
+  const completionSignal = body.analytics.insight_signals.find(
+    (signal: { key: string }) => signal.key === "completion_rate"
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(body.analytics.overview.student_count, 24);
+  assert.equal(body.analytics.overview.average_score, null);
+  assert.equal(body.analytics.overview.average_attitude, null);
+  assert.equal(body.analytics.overview.students_needing_support, 0);
+  assert.equal(body.analytics.class_ranking.length, 0);
+  assert.equal(body.analytics.student_ranking.length, 0);
+  assert.equal(completionSignal.tone, "neutral");
+  assert.equal(typeof completionSignal.metric, "string");
+});
+
 test("headmaster dashboard remains protected", async () => {
   const database = await createSeededDatabase();
   const app = createApp(database, new MemorySessionStore());
