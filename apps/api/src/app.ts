@@ -13,6 +13,7 @@ import {
   SESSION_TTL_SECONDS,
   type SessionStore,
 } from "./auth/session-store.js";
+import { registerTeacherRoutes } from "./teacher/routes.js";
 
 const DB_PATH = join(import.meta.dirname, "../../../database/lms.db");
 
@@ -125,6 +126,7 @@ export function createApp(database: Database, sessions: SessionStore = new Memor
   app.get("/api/teacher/dashboard", requireRole(database, sessions, "teacher"), (context) => {
     return context.json({ ok: true, role: "teacher" });
   });
+  registerTeacherRoutes(app, database, sessions, saveDb);
   app.get("/api/headmaster/dashboard", requireRole(database, sessions, "headmaster"), (context) => {
     return context.json({ ok: true, role: "headmaster" });
   });
