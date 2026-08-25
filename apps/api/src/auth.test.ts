@@ -40,6 +40,77 @@ async function createTestDatabase(): Promise<Database> {
       FOREIGN KEY (user_id) REFERENCES users(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
     );
+    CREATE TABLE academic_periods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      school_year TEXT NOT NULL,
+      semester INTEGER NOT NULL CHECK (semester IN (1, 2)),
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (school_year, semester)
+    );
+    CREATE TABLE subjects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      code TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE subject_teacher_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      teacher_id INTEGER NOT NULL,
+      class_id INTEGER NOT NULL,
+      subject_id INTEGER NOT NULL,
+      academic_period_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (teacher_id, class_id, subject_id, academic_period_id),
+      FOREIGN KEY (teacher_id) REFERENCES users(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id),
+      FOREIGN KEY (subject_id) REFERENCES subjects(id),
+      FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id)
+    );
+    CREATE TABLE homeroom_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      teacher_id INTEGER NOT NULL,
+      class_id INTEGER NOT NULL,
+      academic_period_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (class_id, academic_period_id),
+      FOREIGN KEY (teacher_id) REFERENCES users(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id),
+      FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id)
+    );
+    CREATE TABLE attitudes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      class_id INTEGER NOT NULL,
+      academic_period_id INTEGER NOT NULL,
+      teacher_id INTEGER NOT NULL,
+      score TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (student_id) REFERENCES students(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id),
+      FOREIGN KEY (academic_period_id) REFERENCES academic_periods(id),
+      FOREIGN KEY (teacher_id) REFERENCES users(id)
+    );
+    CREATE TABLE assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_teacher_assignment_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      assignment_type TEXT NOT NULL CHECK (assignment_type IN ('quiz', 'task', 'upload')),
+      start_at TEXT,
+      due_at TEXT,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'closed')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (subject_teacher_assignment_id) REFERENCES subject_teacher_assignments(id)
+    );
   `);
 
   database.run("INSERT INTO classes (name, grade_level) VALUES (?, ?)", ["X-A", 10]);
@@ -94,7 +165,7 @@ test("migration and seed define the unified users model", async () => {
     [
       ["headmaster", 1],
       ["student", 30],
-      ["teacher", 2],
+      ["teacher", 6],
     ]
   );
   assert.equal(

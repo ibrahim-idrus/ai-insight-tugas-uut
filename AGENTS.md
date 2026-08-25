@@ -6,7 +6,7 @@ Before starting any project task or making any repository change, including docu
 
 1. Read `docs/PROJECT_WORKFLOW.md` completely.
 2. Inspect the current repository state and technology stack.
-3. Fetch the latest `origin` state and check for remote changes, local changes, and branch divergence before editing or committing.
+3. Fetch the latest `origin` state and check for remote changes, local changes, and branch divergence before editing or committing. 
 
 The project runs locally by default. Vercel is the frontend deployment target, and Cloudflare Workers is the backend/API runtime. Do not apply hosting instructions from unrelated projects.
 
