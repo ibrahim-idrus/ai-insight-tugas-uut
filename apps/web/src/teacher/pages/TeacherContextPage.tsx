@@ -3,11 +3,30 @@ import { Link, useParams } from "react-router-dom";
 import { getTeacherClass } from "../api";
 import { TeacherBreadcrumbs } from "../components/TeacherBreadcrumbs";
 import { parseTeacherRouteId } from "../route";
+import type { AssignmentStatus, AssignmentType } from "../assignment-types";
 import type { TeacherContextDetails } from "../types";
 
 function formatUpdatedDate(value: string): string {
   return new Date(value).toLocaleDateString();
 }
+
+function formatAssignmentDate(value: string | null): string {
+  if (!value) return "No deadline";
+  const date = new Date(value.replace(" ", "T"));
+  return Number.isFinite(date.getTime()) ? date.toLocaleString() : value;
+}
+
+const assignmentTypeLabels: Record<AssignmentType, string> = {
+  quiz: "Quiz",
+  task: "Regular task",
+  upload: "Upload / evidence task",
+};
+
+const assignmentStatusLabels: Record<AssignmentStatus, string> = {
+  draft: "Draft",
+  published: "Published",
+  closed: "Closed",
+};
 
 export function TeacherContextPage() {
   const { contextId } = useParams<{ contextId: string }>();
@@ -37,6 +56,8 @@ export function TeacherContextPage() {
       active = false;
     };
   }, [contextId]);
+
+  const assignments = context?.assignments ?? [];
 
   return (
     <section className="page-content">
@@ -110,6 +131,37 @@ export function TeacherContextPage() {
                       <td data-label="Actions">
                         <Link to={`/teacher/classes/${context.id}/materials/${material.id}`}>View</Link>{" "}
                         <Link to={`/teacher/classes/${context.id}/materials/${material.id}/edit`}>Edit</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section>
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">Assessment & tasks</span>
+                <h2>Assignments</h2>
+              </div>
+              <Link className="role-pill" to="/teacher/assignments">Manage assignments</Link>
+            </div>
+            {assignments.length === 0 ? <p>No assignments have been created for this class yet.</p> : (
+              <table>
+                <thead>
+                  <tr><th>Title</th><th>Type</th><th>Status</th><th>Due</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {assignments.map((assignment) => (
+                    <tr key={assignment.id}>
+                      <td data-label="Title">{assignment.title}</td>
+                      <td data-label="Type">{assignmentTypeLabels[assignment.assignmentType]}</td>
+                      <td data-label="Status"><span className={`assignment-status assignment-status-${assignment.status}`}>{assignmentStatusLabels[assignment.status]}</span></td>
+                      <td data-label="Due">{formatAssignmentDate(assignment.dueAt)}</td>
+                      <td data-label="Actions">
+                        <Link to={`/teacher/assignments/${assignment.id}`}>View assignment</Link>{" "}
+                        <Link to={`/teacher/assignments/${assignment.id}/edit`}>Edit</Link>
                       </td>
                     </tr>
                   ))}

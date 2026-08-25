@@ -180,6 +180,20 @@ export function listTeacherAssignments(database: Database, teacherId: number): T
   ).map(toTeacherAssignment);
 }
 
+export function listTeacherAssignmentsForContext(
+  database: Database,
+  teacherId: number,
+  contextId: number
+): TeacherAssignment[] {
+  return queryRows<AssignmentRow>(
+    database,
+    `${assignmentSelect}
+      WHERE sta.teacher_id = ? AND sta.id = ?
+      ORDER BY a.id`,
+    [teacherId, contextId]
+  ).map(toTeacherAssignment);
+}
+
 export function findTeacherAssignment(
   database: Database,
   teacherId: number,

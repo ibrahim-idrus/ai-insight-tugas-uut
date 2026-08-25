@@ -1,3 +1,5 @@
+import type { TeacherAssignment } from "./assignment-types.js";
+
 export interface TeacherContextSummary {
   id: number;
   class: { id: number; name: string; gradeLevel: number };
@@ -21,6 +23,7 @@ export interface TeacherMaterial {
 export interface TeacherContextDetails extends TeacherContextSummary {
   students: TeacherStudent[];
   materials: TeacherMaterial[];
+  assignments: TeacherAssignment[];
 }
 
 export interface MaterialInput {

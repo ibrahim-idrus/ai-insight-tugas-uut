@@ -117,6 +117,9 @@ test("returns an authorized teaching context with its students and materials", a
   assert.equal(body.students.length, 5);
   assert.ok(body.students.every((student: any) => Object.keys(student).sort().join(",") === "id,name,nis"));
   assert.equal(body.materials.length, 2);
+  assert.equal(body.assignments.length, 2);
+  assert.ok(body.assignments.every((assignment: any) => assignment.subjectTeacherAssignmentId === contextId));
+  assert.ok(body.assignments.some((assignment: any) => assignment.title === "Quiz Aljabar Dasar"));
 });
 
 test("does not disclose another teacher's teaching context", async () => {

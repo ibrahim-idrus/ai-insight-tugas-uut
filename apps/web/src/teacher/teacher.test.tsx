@@ -155,6 +155,26 @@ test("Context page renders its students and materials", async () => {
             updatedAt: "2026-08-02T00:00:00.000Z",
           },
         ],
+        assignments: [
+          {
+            id: 8,
+            subjectTeacherAssignmentId: 1,
+            title: "Quiz Aljabar Dasar",
+            description: "Kerjakan soal aljabar",
+            assignmentType: "quiz",
+            startAt: "2026-08-25T08:00:00+07:00",
+            dueAt: "2026-08-25T09:00:00+07:00",
+            status: "published",
+            createdAt: "2026-08-01T00:00:00.000Z",
+            updatedAt: "2026-08-02T00:00:00.000Z",
+            context: {
+              id: 1,
+              class: { id: 1, name: "X-A", gradeLevel: 10 },
+              subject: { id: 1, name: "Matematika", code: "MTK" },
+              academicPeriod: { id: 1, schoolYear: "2025/2026", semester: 1 },
+            },
+          },
+        ],
       }),
       { status: 200 }
     );
@@ -173,7 +193,7 @@ test("Context page renders its students and materials", async () => {
     });
 
     const output = renderedText(renderer);
-    for (const text of ["X-A", "Matematika", "Ayu Lestari", "1001", "Bima Pratama", "1002", "Aljabar Dasar"]) {
+    for (const text of ["X-A", "Matematika", "Ayu Lestari", "1001", "Bima Pratama", "1002", "Aljabar Dasar", "Quiz Aljabar Dasar", "Published", "View assignment"]) {
       assert.match(output, new RegExp(text));
     }
     assert.deepEqual(breadcrumbLinks(renderer), [
@@ -183,7 +203,7 @@ test("Context page renders its students and materials", async () => {
     assert.equal(renderer.root.findByProps({ "aria-current": "page" }).props.children, "X-A · Matematika");
     assert.deepEqual(
       renderer.root.findAllByType("td").map((cell) => cell.props["data-label"]),
-      ["Name", "NIS", "Name", "NIS", "Title", "Updated", "Actions"]
+      ["Name", "NIS", "Name", "NIS", "Title", "Updated", "Actions", "Title", "Type", "Status", "Due", "Actions"]
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -204,6 +224,7 @@ test("Context page shows empty students and materials states", async () => {
         materialCount: 0,
         students: [],
         materials: [],
+        assignments: [],
       }),
       { status: 200 }
     );
@@ -224,6 +245,7 @@ test("Context page shows empty students and materials states", async () => {
     const output = renderedText(renderer);
     assert.match(output, /No students are assigned to this class yet/);
     assert.match(output, /No materials have been created for this class yet/);
+    assert.match(output, /No assignments have been created for this class yet/);
   } finally {
     globalThis.fetch = originalFetch;
   }
