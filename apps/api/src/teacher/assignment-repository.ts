@@ -189,7 +189,37 @@ export function updateTeacherAssignment(
   return database.getRowsModified() === 1 ? selectTeacherAssignment(database, teacherId, assignmentId) : null;
 }
 
-export function deleteTeacherAssignment(database: Database, teacherId: number, assignmentId: number): boolean {
+export type DeleteTeacherAssignmentResult = "deleted" | "not_found" | "has_dependents";
+
+export function deleteTeacherAssignment(
+  database: Database,
+  teacherId: number,
+  assignmentId: number
+): DeleteTeacherAssignmentResult {
+  const owned = queryRows<{ id: number }>(
+    database,
+    `
+      SELECT a.id
+      FROM assignments a
+      JOIN subject_teacher_assignments sta ON sta.id = a.subject_teacher_assignment_id
+      WHERE a.id = ? AND sta.teacher_id = ?
+    `,
+    [assignmentId, teacherId]
+  );
+  if (owned.length === 0) return "not_found";
+
+  const dependents = queryRows<{ id: number }>(
+    database,
+    `
+      SELECT id FROM assignment_questions WHERE assignment_id = ?
+      UNION ALL
+      SELECT id FROM assignment_submissions WHERE assignment_id = ?
+      LIMIT 1
+    `,
+    [assignmentId, assignmentId]
+  );
+  if (dependents.length > 0) return "has_dependents";
+
   database.run(
     `
       DELETE FROM assignments AS a
@@ -203,7 +233,7 @@ export function deleteTeacherAssignment(database: Database, teacherId: number, a
     `,
     [assignmentId, teacherId]
   );
-  return database.getRowsModified() === 1;
+  return database.getRowsModified() === 1 ? "deleted" : "not_found";
 }
 
 export function transitionTeacherAssignment(

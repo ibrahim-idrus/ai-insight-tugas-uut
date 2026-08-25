@@ -161,7 +161,10 @@ export function registerTeacherAssignmentRoutes(
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
 
     const deleted = deleteTeacherAssignment(database, context.get("authUser").id, assignmentId);
-    if (!deleted) return assignmentNotFound(context);
+    if (deleted === "not_found") return assignmentNotFound(context);
+    if (deleted === "has_dependents") {
+      return context.json({ error: "Assignment has dependent questions or submissions" }, 409);
+    }
 
     persist();
     return context.body(null, 204);

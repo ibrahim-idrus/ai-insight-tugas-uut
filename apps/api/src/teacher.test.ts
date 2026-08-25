@@ -476,3 +476,19 @@ test("does not allow a teacher to mutate another teacher's assignment", async ()
     assert.equal((await request).status, 404);
   }
 });
+
+test("reports a safe mutation failure when an assignment has dependent submissions", async () => {
+  const { app, database } = await setupTeacherApp();
+  const { cookie } = await login(app, "adminarsito", "admin123");
+  const assignmentId = assignmentIdFor(database, contextIdFor(database, 2, 1, 1, 1), "Quiz Aljabar Dasar");
+
+  const response = await app.request(`/api/teacher/assignments/${assignmentId}`, {
+    method: "DELETE",
+    headers: { Cookie: cookie },
+  });
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { error: "Assignment has dependent questions or submissions" });
+  const stillThere = await app.request(`/api/teacher/assignments/${assignmentId}`, { headers: { Cookie: cookie } });
+  assert.equal(stillThere.status, 200);
+});
