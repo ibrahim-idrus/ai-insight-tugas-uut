@@ -659,6 +659,19 @@ test("builds an owned quiz with question CRUD, reorder, and dynamic total points
   assert.equal(reorderedBody.questions[0].questionOrder, 1);
   assert.equal(reorderedBody.totalPoints, 75);
 
+  database.run(
+    `INSERT INTO submission_answers (submission_id, question_id, answer, score, is_correct)
+     VALUES (1, ?, 'Jakarta', NULL, NULL)`,
+    [question.id]
+  );
+  const blockedDelete = await app.request(`/api/teacher/assignments/${quizId}/quiz/questions/${question.id}`, {
+    method: "DELETE",
+    headers: { Cookie: ownerCookie },
+  });
+  assert.equal(blockedDelete.status, 409);
+  assert.deepEqual(await blockedDelete.json(), { error: "Question has dependent submissions" });
+  database.run("DELETE FROM submission_answers WHERE submission_id = 1 AND question_id = ?", [question.id]);
+
   const foreign = await app.request(`/api/teacher/assignments/${quizId}/quiz`, {
     headers: { Cookie: foreignCookie },
   });

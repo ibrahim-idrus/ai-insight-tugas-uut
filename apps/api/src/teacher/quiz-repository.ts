@@ -27,6 +27,8 @@ export interface QuizQuestionInput {
   answerKey: string | null;
 }
 
+export type DeleteTeacherQuizQuestionResult = "deleted" | "not_found" | "has_submissions";
+
 interface QuestionRow {
   id: number;
   question_text: string;
@@ -150,7 +152,16 @@ export function deleteTeacherQuizQuestion(
   teacherId: number,
   assignmentId: number,
   questionId: number
-): boolean {
+): DeleteTeacherQuizQuestionResult {
+  if (!selectQuestion(database, teacherId, assignmentId, questionId)) return "not_found";
+
+  const hasSubmissions = queryRows<{ id: number }>(
+    database,
+    "SELECT id FROM submission_answers WHERE question_id = ? LIMIT 1",
+    [questionId]
+  )[0];
+  if (hasSubmissions) return "has_submissions";
+
   database.run(
     `
       DELETE FROM assignment_questions AS aq
@@ -162,9 +173,9 @@ export function deleteTeacherQuizQuestion(
           WHERE a.id = aq.assignment_id AND a.assignment_type = 'quiz' AND sta.teacher_id = ?
         )
     `,
-    [questionId, assignmentId, teacherId]
+      [questionId, assignmentId, teacherId]
   );
-  return database.getRowsModified() === 1;
+  return database.getRowsModified() === 1 ? "deleted" : "not_found";
 }
 
 export function reorderTeacherQuizQuestions(

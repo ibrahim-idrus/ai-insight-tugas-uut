@@ -1096,6 +1096,7 @@ test("Assignment results renders submitted, graded, and not-started roster rows"
       students: [
         { id: 1, name: "Ahmad Rizki", nis: "2025001", status: "graded", submittedAt: "2026-08-01 08:45:00", startedAt: "2026-08-01 08:00:00", score: 45, submissionId: 1 },
         { id: 2, name: "Budi Santoso", nis: "2025002", status: "not_started", submittedAt: null, startedAt: null, score: null, submissionId: null },
+        { id: 3, name: "Citra Dewi", nis: "2025003", status: "in_progress", submittedAt: null, startedAt: "2031-08-01 08:30:00", score: null, submissionId: 3 },
       ],
     }), { status: 200 });
   }) as typeof fetch;
@@ -1110,7 +1111,7 @@ test("Assignment results renders submitted, graded, and not-started roster rows"
       );
     });
     const output = renderedText(renderer);
-    for (const value of ["Assignment results", "Ahmad Rizki", "Graded", "45 / 60", "Budi Santoso", "Not started"]) {
+    for (const value of ["Assignment results", "Submitted / started", "Ahmad Rizki", "Graded", "45 / 60", "Budi Santoso", "Not started", "Citra Dewi", "2031"]) {
       assert.match(output, new RegExp(value));
     }
   } finally {

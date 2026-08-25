@@ -126,8 +126,11 @@ export function registerTeacherQuizRoutes(
     if (!assignmentId) return context.json({ error: "Invalid assignment ID" }, 400);
     if (!questionId) return context.json({ error: "Invalid question ID" }, 400);
 
-    const deleted = deleteTeacherQuizQuestion(database, context.get("authUser").id, assignmentId, questionId);
-    if (!deleted) return context.json({ error: "Question not found" }, 404);
+    const deletion = deleteTeacherQuizQuestion(database, context.get("authUser").id, assignmentId, questionId);
+    if (deletion === "not_found") return context.json({ error: "Question not found" }, 404);
+    if (deletion === "has_submissions") {
+      return context.json({ error: "Question has dependent submissions" }, 409);
+    }
     persist();
     return context.body(null, 204);
   });

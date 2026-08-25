@@ -55,10 +55,10 @@ export function TeacherResultsPage() {
       {results ? (
         <div className="table-wrap teacher-results-table-wrap">
           <table className="data-table">
-            <thead><tr><th>Student</th><th>NIS</th><th>Status</th><th>Submitted</th><th>Score</th></tr></thead>
+            <thead><tr><th>Student</th><th>NIS</th><th>Status</th><th>Submitted / started</th><th>Score</th></tr></thead>
             <tbody>
               {results.students.map((student) => (
-                <tr key={student.id}><td className="cell-bold">{student.name}</td><td>{student.nis}</td><td><span className={`status-pill status-${student.status}`}>{statusLabels[student.status] ?? student.status}</span></td><td>{formatDate(student.submittedAt)}</td><td>{student.score === null ? "—" : `${student.score} / ${results.totalPoints}`}</td></tr>
+                <tr key={student.id}><td className="cell-bold">{student.name}</td><td>{student.nis}</td><td><span className={`status-pill status-${student.status}`}>{statusLabels[student.status] ?? student.status}</span></td><td>{student.submittedAt ? formatDate(student.submittedAt) : student.startedAt ? `Started ${formatDate(student.startedAt)}` : "—"}</td><td>{student.score === null ? "—" : `${student.score} / ${results.totalPoints}`}</td></tr>
               ))}
             </tbody>
           </table>
