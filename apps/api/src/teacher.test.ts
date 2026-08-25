@@ -767,6 +767,13 @@ test("restricts homeroom rosters and attitude upserts to the authenticated homer
   });
   assert.equal(invalid.status, 400);
 
+  const malformed = await app.request("/api/teacher/homeroom/1/students/1/attitude", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: "null",
+  });
+  assert.equal(malformed.status, 400);
+
   const foreign = await app.request("/api/teacher/homeroom/1", { headers: { Cookie: foreignCookie } });
   assert.equal(foreign.status, 404);
   const foreignWrite = await app.request("/api/teacher/homeroom/1/students/1/attitude", {

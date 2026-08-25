@@ -49,12 +49,16 @@ export function registerTeacherHomeroomRoutes(
     if (!homeroomId) return context.json({ error: "Invalid homeroom ID" }, 400);
     if (!studentId) return context.json({ error: "Invalid student ID" }, 400);
 
-    let body: Record<string, unknown>;
+    let rawBody: unknown;
     try {
-      body = await context.req.json();
+      rawBody = await context.req.json();
     } catch {
       return context.json({ error: "Score is required" }, 400);
     }
+    if (!rawBody || Array.isArray(rawBody) || typeof rawBody !== "object") {
+      return context.json({ error: "Score is required" }, 400);
+    }
+    const body = rawBody as Record<string, unknown>;
     const score = body.score;
     if (typeof score !== "string" || !ATTITUDE_SCORES.includes(score as AttitudeScore)) {
       return context.json({ error: "Score must be A, B, C, or D" }, 400);
