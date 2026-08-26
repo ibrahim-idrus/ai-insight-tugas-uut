@@ -461,6 +461,7 @@ export function getHeadmasterAnalytics(
       .map((row, index) => ({ ...row, rank: index + 1, average_score: roundMetric(row.average_score) }));
 
     const subjectPerformance = periodSubjects
+      .filter((subject) => (subjectAssignments.get(subject.subject_id) ?? []).length > 0)
       .map((subject) => {
         const assignments = subjectAssignments.get(subject.subject_id) ?? [];
         const expectedForSubject = assignments.reduce((total, assignment) => {

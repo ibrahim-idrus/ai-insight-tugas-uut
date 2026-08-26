@@ -92,7 +92,10 @@ test("headmaster dashboard returns the approved analytics contract", async () =>
     body.analytics.insight_signals.map((signal: { key: string }) => signal.key),
     ["top_class", "completion_rate", "enrollment_trend", "students_needing_support"]
   );
-  assert.ok(body.analytics.subject_performance.length >= 3);
+  assert.ok(body.analytics.subject_performance.length > 0);
+  assert.ok(
+    body.analytics.subject_performance.every((row: { assignment_count: number }) => row.assignment_count > 0)
+  );
 });
 
 test("period-specific enrollment and rankings are ordered and exclude ungraded students", async () => {
@@ -151,6 +154,38 @@ test("headmaster classes keep current roster counts when academic_period_id is o
   assert.notDeepEqual(
     historicalRoster.map((row: { student_count: number }) => row.student_count),
     currentRoster.map((row: { student_count: number }) => row.student_count)
+  );
+});
+
+test("headmaster detail routes fall back to the resolved period for invalid academic_period_id", async () => {
+  const database = await createSeededDatabase();
+  const app = createApp(database, new MemorySessionStore());
+  const { cookie } = await login(app, "adminbaim", "admin123");
+
+  const validClassesResponse = await app.request("/api/headmaster/classes?academic_period_id=2", {
+    headers: { Cookie: cookie },
+  });
+  const invalidClassesResponse = await app.request("/api/headmaster/classes?academic_period_id=999999", {
+    headers: { Cookie: cookie },
+  });
+  const validStudentsResponse = await app.request("/api/headmaster/students?academic_period_id=2", {
+    headers: { Cookie: cookie },
+  });
+  const invalidStudentsResponse = await app.request("/api/headmaster/students?academic_period_id=999999", {
+    headers: { Cookie: cookie },
+  });
+
+  assert.equal(validClassesResponse.status, 200);
+  assert.equal(invalidClassesResponse.status, 200);
+  assert.equal(validStudentsResponse.status, 200);
+  assert.equal(invalidStudentsResponse.status, 200);
+  assert.deepEqual(
+    (await invalidClassesResponse.json()).classes,
+    (await validClassesResponse.json()).classes
+  );
+  assert.deepEqual(
+    (await invalidStudentsResponse.json()).students,
+    (await validStudentsResponse.json()).students
   );
 });
 

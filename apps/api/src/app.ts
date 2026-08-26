@@ -345,7 +345,13 @@ export function createApp(
   app.get("/api/headmaster/students", requireRole(database, sessions, "headmaster"), (context) => {
     const search = context.req.query("search") ?? "";
     const classId = context.req.query("class_id");
-    const academicPeriodId = parsePositiveInteger(context.req.query("academic_period_id"));
+    const requestedAcademicPeriodId = context.req.query("academic_period_id");
+    const hasAcademicPeriodQuery = requestedAcademicPeriodId !== undefined;
+    const resolvedPeriod = resolveAcademicPeriod(
+      getAcademicPeriods(database),
+      requestedAcademicPeriodId
+    );
+    const academicPeriodId = hasAcademicPeriodQuery ? resolvedPeriod?.id ?? null : null;
 
     let query: string;
     const conditions: string[] = [];
@@ -424,11 +430,13 @@ export function createApp(
   });
 
   app.get("/api/headmaster/classes", requireRole(database, sessions, "headmaster"), (context) => {
-    const requestedPeriodId = parsePositiveInteger(context.req.query("academic_period_id"));
-    const resolvedPeriod = resolveAcademicPeriod(getAcademicPeriods(database), context.req.query("academic_period_id"));
-    const homeroomPeriodId = requestedPeriodId ?? resolvedPeriod?.id ?? null;
+    const requestedPeriodId = context.req.query("academic_period_id");
+    const hasPeriodQuery = requestedPeriodId !== undefined;
+    const resolvedPeriod = resolveAcademicPeriod(getAcademicPeriods(database), requestedPeriodId);
+    const periodId = hasPeriodQuery ? resolvedPeriod?.id ?? null : null;
+    const homeroomPeriodId = resolvedPeriod?.id ?? null;
 
-    const result = requestedPeriodId !== null
+    const result = periodId !== null
       ? database.exec(
           `
             SELECT c.id, c.name, c.grade_level,
@@ -444,7 +452,7 @@ export function createApp(
             GROUP BY c.id
             ORDER BY c.grade_level, c.name
           `,
-          [requestedPeriodId, requestedPeriodId]
+          [periodId, periodId]
         )
       : database.exec(
           `
