@@ -106,6 +106,13 @@ test("headmaster dashboard returns the approved analytics contract", async () =>
 
 test("period-specific enrollment and rankings show a completed semester", async () => {
   const database = await createSeededDatabase();
+  database.run(
+    `UPDATE assignments
+     SET status = 'closed'
+     WHERE subject_teacher_assignment_id IN (
+       SELECT id FROM subject_teacher_assignments WHERE academic_period_id = 2
+     )`
+  );
   const app = createApp(database, new MemorySessionStore());
   const { cookie } = await login(app, "adminbaim", "admin123");
   const current = await app.request("/api/headmaster/dashboard?academic_period_id=2", {
@@ -126,6 +133,9 @@ test("period-specific enrollment and rankings show a completed semester", async 
   );
   assert.ok(currentBody.analytics.student_ranking.every((row: { average_score: number }) => row.average_score > 0));
   assert.equal(currentBody.analytics.overview.completion_rate, 100);
+  assert.equal(currentBody.analytics.class_ranking.length, 6);
+  assert.ok(currentBody.analytics.subject_performance.length > 0);
+  assert.equal(currentBody.analytics.student_ranking.length, 10);
 });
 
 test("headmaster classes keep current roster counts when academic_period_id is omitted", async () => {

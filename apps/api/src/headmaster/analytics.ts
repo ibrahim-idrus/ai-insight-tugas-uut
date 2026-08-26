@@ -285,7 +285,9 @@ export function getHeadmasterAnalytics(
 
   const calculatePeriodMetrics = (periodId: number): PeriodMetrics => {
     const periodEnrollments = enrollmentsByPeriod.get(periodId) ?? [];
-    const publishedAssignments = (assignmentsByPeriod.get(periodId) ?? []).filter((row) => row.status === "published");
+    const publishedAssignments = (assignmentsByPeriod.get(periodId) ?? []).filter(
+      (row) => row.status === "published" || row.status === "closed"
+    );
     const periodSubjects = subjectsByPeriod.get(periodId) ?? [];
     const periodAttitudes = attitudesByPeriod.get(periodId) ?? [];
 
