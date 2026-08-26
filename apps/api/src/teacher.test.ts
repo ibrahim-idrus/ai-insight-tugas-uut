@@ -815,7 +815,7 @@ test("returns a teacher-owned dashboard summary instead of the placeholder respo
   assert.equal(body.ok, undefined);
   assert.equal(body.contexts.length, 16);
   assert.deepEqual(body.assignments, { total: 17, draft: 1, published: 0, closed: 16 });
-  assert.deepEqual(body.submissions, { total: 60, inProgress: 0, submitted: 2, graded: 58 });
+  assert.deepEqual(body.submissions, { total: 73, inProgress: 0, submitted: 0, graded: 73 });
   assert.ok(body.recentAssignments.some((assignment: any) => assignment.title === "Latihan Semester XII-B 2"));
   assert.equal(typeof body.performance.averageScore, "number");
 

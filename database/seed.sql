@@ -344,10 +344,12 @@ SELECT 11,
        CASE id
          WHEN 1 THEN 86
          WHEN 2 THEN 89
-         ELSE 91
+         WHEN 3 THEN 91
+         WHEN 4 THEN 84
+         ELSE 88
        END
 FROM students
-WHERE id BETWEEN 1 AND 3;
+WHERE id BETWEEN 1 AND 5;
 
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
 SELECT 12,
@@ -374,10 +376,12 @@ SELECT 13,
        CASE id
          WHEN 6 THEN 91
          WHEN 7 THEN 88
-         ELSE 84
+         WHEN 8 THEN 84
+         WHEN 9 THEN 79
+         ELSE 82
        END
 FROM students
-WHERE id BETWEEN 6 AND 8;
+WHERE id BETWEEN 6 AND 10;
 
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
 SELECT 14,
@@ -404,10 +408,12 @@ SELECT 15,
        CASE id
          WHEN 11 THEN 89
          WHEN 12 THEN 87
-         ELSE 93
+         WHEN 13 THEN 93
+         WHEN 14 THEN 86
+         ELSE 90
        END
 FROM students
-WHERE id BETWEEN 11 AND 13;
+WHERE id BETWEEN 11 AND 15;
 
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
 SELECT 16,
@@ -417,15 +423,13 @@ SELECT 16,
          WHEN id BETWEEN 16 AND 18 THEN datetime('2026-02-05 08:00:00', '+' || (id - 15) * 5 || ' minutes')
          ELSE '2026-02-05 09:15:00'
        END,
-       CASE
-         WHEN id BETWEEN 16 AND 18 THEN 'graded'
-         ELSE 'submitted'
-       END,
+       'graded',
        CASE
          WHEN id = 16 THEN 88
          WHEN id = 17 THEN 84
          WHEN id = 18 THEN 91
-         ELSE NULL
+         WHEN id = 19 THEN 76
+         ELSE 81
        END
 FROM students
 WHERE id BETWEEN 16 AND 20;
@@ -438,10 +442,13 @@ SELECT 17,
        'graded',
        CASE id
          WHEN 16 THEN 90
-         ELSE 85
+         WHEN 17 THEN 85
+         WHEN 18 THEN 82
+         WHEN 19 THEN 78
+         ELSE 80
        END
 FROM students
-WHERE id BETWEEN 16 AND 17;
+WHERE id BETWEEN 16 AND 20;
 
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
 SELECT 18,
@@ -468,10 +475,12 @@ SELECT 19,
        CASE id
          WHEN 21 THEN 88
          WHEN 22 THEN 86
-         ELSE 90
+         WHEN 23 THEN 90
+         WHEN 24 THEN 83
+         ELSE 87
        END
 FROM students
-WHERE id BETWEEN 21 AND 23;
+WHERE id BETWEEN 21 AND 25;
 
 INSERT INTO assignment_submissions (assignment_id, student_id, started_at, submitted_at, status, total_score)
 SELECT 20,
@@ -498,10 +507,12 @@ SELECT 21,
        CASE id
          WHEN 26 THEN 87
          WHEN 27 THEN 89
-         ELSE 92
+         WHEN 28 THEN 92
+         WHEN 29 THEN 86
+         ELSE 90
        END
 FROM students
-WHERE id BETWEEN 26 AND 28;
+WHERE id BETWEEN 26 AND 30;
 
 -- ============================================================
 -- 12. submission_answers

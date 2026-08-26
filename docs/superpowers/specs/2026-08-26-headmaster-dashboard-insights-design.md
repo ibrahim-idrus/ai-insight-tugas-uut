@@ -66,7 +66,7 @@ Update `database/seed.sql` so the database contains:
 - Enrollment history for the 30 seeded students across all periods, with earlier periods containing fewer enrolled students and different class distributions so the trend chart is not flat.
 - Current-period teaching assignments covering the seeded classes and multiple subjects.
 - At least 12 published current-period assignments across classes and subjects.
-- Graded and unsubmitted current-period assignment submissions distributed unevenly across classes, so completion rates and student rankings differ.
+- All 60 expected current-period submission rows (12 published assignments across six five-student classes) are graded, with score quality distributed unevenly across classes so rankings and support signals still differ.
 - Current-period attitude records with a mix of A, B, C, and D values, including at least one class with a lower support signal.
 - Historical enrollment and assessment records sufficient for period trend values; periods without a graded score must return nullable academic metrics rather than fabricated zeros.
 

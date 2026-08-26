@@ -61,13 +61,19 @@ test("seed preserves historical PAI coverage and current-period analytics fixtur
     database.exec(
       "SELECT COUNT(*) FROM assignment_submissions WHERE assignment_id BETWEEN 10 AND 21 AND status = 'graded'"
     )[0].values[0][0],
-    45
+    60
   );
   assert.equal(
     database.exec(
       "SELECT COUNT(*) FROM assignment_submissions WHERE assignment_id BETWEEN 10 AND 21 AND status = 'submitted'"
     )[0].values[0][0],
-    2
+    0
+  );
+  assert.equal(
+    database.exec(
+      "SELECT COUNT(*) FROM assignment_submissions WHERE assignment_id BETWEEN 10 AND 21"
+    )[0].values[0][0],
+    60
   );
   assert.equal(
     database.exec("SELECT COUNT(*) FROM attitudes WHERE academic_period_id = 2")[0].values[0][0],
@@ -98,7 +104,7 @@ test("headmaster dashboard returns the approved analytics contract", async () =>
   );
 });
 
-test("period-specific enrollment and rankings are ordered and exclude ungraded students", async () => {
+test("period-specific enrollment and rankings show a completed semester", async () => {
   const database = await createSeededDatabase();
   const app = createApp(database, new MemorySessionStore());
   const { cookie } = await login(app, "adminbaim", "admin123");
@@ -119,13 +125,7 @@ test("period-specific enrollment and rankings are ordered and exclude ungraded s
     )
   );
   assert.ok(currentBody.analytics.student_ranking.every((row: { average_score: number }) => row.average_score > 0));
-  assert.equal(
-    currentBody.analytics.student_ranking.some(
-      (row: { student_id: number }) => row.student_id === 19 || row.student_id === 20
-    ),
-    false
-  );
-  assert.ok(currentBody.analytics.overview.completion_rate < 100);
+  assert.equal(currentBody.analytics.overview.completion_rate, 100);
 });
 
 test("headmaster classes keep current roster counts when academic_period_id is omitted", async () => {

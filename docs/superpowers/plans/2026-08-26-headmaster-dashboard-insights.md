@@ -5,6 +5,8 @@
 
 Goal: Add period-aware SQLite seed data, analytics API fields, rankings, trends, and insight views to the headmaster dashboard.
 
+Data completion follow-up: The current period is now seeded as a completed semester. All 12 published assignments have graded submissions for all five enrolled students in their class (60 graded rows total); the partial/submitted-only coverage described in the original Task 1 steps below is superseded. Historical periods remain intentionally sparse so period trends and no-data handling stay meaningful.
+
 Architecture: Keep /api/headmaster/dashboard as the single dashboard data contract. Add a normalized student_enrollments history table, gather enrollment/assignment/submission/attitude rows in an isolated analytics module, calculate deterministic metrics in memory, and render the structured response through a focused React analytics component. Existing dashboard fields and detail modals remain compatible.
 
 Tech Stack: SQLite/sql.js, Hono, TypeScript, React 18, React Test Renderer, Node's built-in test runner, Vite, existing CSS/SVG patterns.
